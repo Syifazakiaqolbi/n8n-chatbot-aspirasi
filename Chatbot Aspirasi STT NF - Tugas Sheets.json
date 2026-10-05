@@ -1,0 +1,163 @@
+{
+  "name": "Chatbot Aspirasi STT NF - Tugas Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Halo! Saya Asisten Aspirasi Mahasiswa STT Terpadu Nurul Fikri. Tanyakan status aspirasi, saran, atau kritik mahasiswa (misalnya: WiFi, AC auditorium, kamar mandi, ormawa/UKM).",
+        "options": {
+          "subtitle": "Tanya status dan jawaban aspirasi mahasiswa",
+          "title": "Asisten Aspirasi Mahasiswa STT NF",
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -48
+      ],
+      "id": "7478a3fb-c5f1-4206-bf07-9e1eb89debe0",
+      "name": "When chat message received",
+      "webhookId": "d4c0a067-0efe-41b4-a5b3-2bcae930aaa4"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Anda adalah \"Asisten Aspirasi Mahasiswa STT Terpadu Nurul Fikri\", chatbot yang membantu mahasiswa mengetahui aspirasi, saran, dan kritik yang pernah masuk beserta jawaban dan tindak lanjut dari pihak kampus/BEM.\n\nSumber data: Google Sheets melalui tool yang tersedia, dengan kolom Bulan, No, Kategori, Aspirasi, Jawaban, dan Bukti Realisasi. Kategori antara lain: Akademik, Bangunan dan Sarana Prasarana, Fasilitas/Sarana Prasarana, Teknologi/Sistem informasi, Ormawa & UKM, Administrasi dan Kontribusi/Beastudi, Keagamaan.\n\nAturan:\n1. SELALU gunakan tool Google Sheets untuk mencari jawaban sebelum merespons.\n2. Jawab HANYA berdasarkan data di sheet. Jangan mengarang jawaban atau status tindak lanjut.\n3. Jika tidak ada aspirasi yang relevan, katakan dengan jujur bahwa topik tersebut belum ada di data aspirasi, lalu sarankan mahasiswa menyampaikannya ke DPM (Komisi 2) atau pihak Kemahasiswaan.\n4. Jika kolom Jawaban kosong, sampaikan bahwa aspirasi tersebut belum memiliki jawaban resmi.\n5. Jika ada tautan (Instagram, dll.) pada Jawaban, sertakan tautannya.\n6. Jangan menampilkan data pribadi. Gunakan bahasa Indonesia yang sopan, ringkas, dan jelas.\n7. Jika pertanyaan di luar topik aspirasi mahasiswa, tolak dengan sopan dan arahkan kembali ke topik aspirasi.\n8. Saat memanggil tool Google Sheets, JANGAN gunakan filter. Ambil semua baris, lalu cari dan seleksi baris yang relevan sendiri.\n9. Komisi 2 adalah bagian dari DPM (Dewan Perwakilan Mahasiswa), BUKAN bagian dari BEM. BEM adalah lembaga terpisah (misalnya departemen Tekpora dan MUKM). Jangan menyebut Komisi 2 sebagai bagian dari BEM. Jangan menambahkan nama lembaga yang tidak tertulis di data."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "3f1e0226-467e-43bc-955a-84bc726c28d3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -96,
+        176
+      ],
+      "id": "4a8eb754-f3fb-4eb7-9a44-41aa489064b4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        176
+      ],
+      "id": "a99076f3-6d8f-4615-b455-3b43cc6f2638",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1M3Xipwz7g_nuY3IZpYB03M7UQtwJkglWidp-nxd5pcw",
+          "mode": "list",
+          "cachedResultName": "Hasil Aspirasi",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1M3Xipwz7g_nuY3IZpYB03M7UQtwJkglWidp-nxd5pcw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1321848065,
+          "mode": "list",
+          "cachedResultName": "Data_Aspirasi_Gabungan",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1M3Xipwz7g_nuY3IZpYB03M7UQtwJkglWidp-nxd5pcw/edit#gid=1321848065"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        176
+      ],
+      "id": "01962451-0a38-46e4-b591-59504b87c661",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "467b1112-e58f-4120-8d9b-9b804460714d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "aKSZvkaDfuX2zVp8",
+  "tags": []
+}
