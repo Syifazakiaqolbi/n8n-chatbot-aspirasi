@@ -14,10 +14,10 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.3,
       "position": [
-        -256,
-        -48
+        0,
+        0
       ],
-      "id": "e332ad15-aee0-4cb2-b8c6-df10f6aa5ece",
+      "id": "f85bbe37-3b45-4f55-9379-b46a5ebb6161",
       "name": "When chat message received",
       "webhookId": "71a3dc36-0a93-4cf2-ace2-381fd4eaff94"
     },
@@ -30,10 +30,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        0,
-        -48
+        256,
+        0
       ],
-      "id": "b4aa50f3-9bbf-4dd1-ab8d-96bbccb2104e",
+      "id": "eacae61b-9026-4b16-b0f4-a79cc3f52722",
       "name": "AI Agent"
     },
     {
@@ -43,15 +43,16 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1.1,
       "position": [
-        -96,
-        176
+        160,
+        224
       ],
-      "id": "060d7389-069d-49ca-8568-7705138d141d",
+      "id": "2c0ba5a0-fe70-4938-828a-2326d0d5ee30",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "XjzcZfa6WzCMZLkr",
-          "name": "Google Gemini(PaLM) Api account"
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
         }
       }
     },
@@ -60,10 +61,10 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        64,
-        176
+        320,
+        224
       ],
-      "id": "3fd410c3-7a37-4e65-a341-20497f464358",
+      "id": "cef05d01-6075-480a-8c44-db2efc02ba2b",
       "name": "Simple Memory"
     },
     {
@@ -87,14 +88,14 @@
       "type": "n8n-nodes-base.googleSheetsTool",
       "typeVersion": 4.7,
       "position": [
-        224,
-        176
+        480,
+        224
       ],
-      "id": "fcb3c333-40aa-41a7-943f-3e7fcffafcd9",
+      "id": "ef1f7405-96ef-48c9-80cd-94d443ac4cbe",
       "name": "Get row(s) in sheet in Google Sheets",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "bSN7kljN2relgi6s",
+          "id": "zEf7lyL8S39ZChor",
           "name": "Google Sheets account"
         }
       }
@@ -152,12 +153,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "d3ec0e7a-49b6-4c02-801c-d7d47f188b83",
+  "versionId": "97129a29-dc4b-4810-8262-4adec232f409",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+    "instanceId": "f7e63f65454954f5c3a3010aeb166fa26d73a837a67ded131c59bf49c5b0a8cd"
   },
   "nodeGroups": [],
-  "id": "nSMOkhN1gLd8JbzM",
+  "id": "iCAFvSOV69dSKhnd",
   "tags": []
 }
