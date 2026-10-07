@@ -1,0 +1,187 @@
+{
+  "name": "RAG AI Agent - Chatbot Skripsi (Supabase Vector Store)",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Halo! Saya Asisten Penulisan Ilmiah Skripsi. Tanyakan hal seputar penulisan ilmiah tugas akhir skripsi, misalnya struktur bab, format penulisan, atau sitasi.",
+        "options": {
+          "subtitle": "Tanya seputar penulisan ilmiah tugas akhir skripsi",
+          "title": "Asisten Penulisan Ilmiah Skripsi",
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d34eae60-9662-4986-95a1-f551008603c9",
+      "name": "When chat message received",
+      "webhookId": "f76f37d7-a9d0-489e-b707-71fde655b3e2"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Anda adalah \"Asisten Penulisan Ilmiah Skripsi\", chatbot yang membantu mahasiswa memahami panduan penulisan ilmiah tugas akhir skripsi berdasarkan dokumen PDF yang sudah disimpan di database vektor.\n\nSumber data: tool \"Supabase Vector Store\" yang berisi potongan teks dari dokumen panduan penulisan ilmiah skripsi.\n\nAturan:\n1. Pada SETIAP pertanyaan, WAJIB memanggil tool \"Supabase Vector Store\" terlebih dahulu untuk mencari informasi di dokumen sebelum menjawab. Jangan menjawab dari ingatan percakapan atau pengetahuan umum saja.\n2. Jawab HANYA berdasarkan informasi yang dikembalikan oleh tool. Jangan mengarang aturan, angka, atau format yang tidak ada di dokumen.\n3. Jika informasi yang ditanyakan tidak ditemukan di dokumen, katakan dengan jujur bahwa informasi tersebut belum ditemukan, lalu sarankan mahasiswa menanyakannya ke dosen pembimbing atau bagian akademik.\n4. Gunakan bahasa Indonesia yang sopan, ringkas, dan jelas. Gunakan poin-poin bila jawabannya berupa langkah atau daftar.\n5. Jika pertanyaan di luar topik penulisan ilmiah skripsi, tolak dengan sopan dan arahkan kembali ke topik tersebut.\n6. Untuk pertanyaan lanjutan, gunakan riwayat percakapan hanya untuk memahami maksud pertanyaan, lalu tetap cari informasinya lewat tool."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        256,
+        0
+      ],
+      "id": "2233382c-2f01-46b2-9607-ecd85dd0c3ef",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        224
+      ],
+      "id": "289845ac-474d-4bc3-94f9-a67d5a140d81",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        224
+      ],
+      "id": "de272af1-9c0c-4919-bb4c-f4dd64c6539f",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Gunakan tool ini untuk mencari informasi dari dokumen panduan penulisan ilmiah tugas akhir skripsi yang tersimpan di database vektor Supabase.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        496,
+        224
+      ],
+      "id": "abeef7fb-2909-42bc-a5bb-59ed99618e28",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "MI752YJPnAZP7Rci",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        512,
+        448
+      ],
+      "id": "380db29f-f11d-48be-a92b-2b7d84f7fd1b",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7cc22b1e-6e56-403e-9a80-c5e33ecd82db",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "KmDZNhzhJQsxNbQg",
+  "tags": []
+}
