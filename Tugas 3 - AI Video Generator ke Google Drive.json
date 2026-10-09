@@ -1,0 +1,369 @@
+{
+  "name": "Tugas 3 - AI Video Generator ke Google Drive",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Video Generator",
+        "formDescription": "Masukkan prompt video dan URL gambar (Google Drive public, format uc?export=download&id=xxxxx).",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "prompt",
+              "fieldType": "textarea",
+              "placeholder": "Contoh: kucing astronot berjalan di bulan, gaya kartun",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "image",
+              "placeholder": "https://drive.google.com/uc?export=download&id=xxxxx",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4e0a878f-64e3-4975-8a02-30ff8be93757",
+      "name": "n8n Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        128
+      ],
+      "webhookId": "e0d02033-bed6-43d7-ac51-5160d6280569"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"grok-imagine-video-1-5-preview\",\n  \"input\": {\n    \"prompt\": \"{{ $json.prompt }}\",\n    \"image_urls\": [\n      \"{{ $json.image }}\"\n    ],\n    \"aspect_ratio\": \"auto\",\n    \"resolution\": \"480p\",\n    \"duration\": 8\n  }\n}",
+        "options": {}
+      },
+      "id": "1b30a13c-6673-4ee5-9e7c-7674bc1a01c2",
+      "name": "Create Task (POST)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1040,
+        128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "btMexPPUkbfb9Bts",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "id": "878a8e7b-5632-4c99-b23e-440d989c5faa",
+      "name": "Wait 20 Detik",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        128
+      ],
+      "webhookId": "tugas3-wait-20s"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('Create Task (POST)').first().json.data.taskId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a98831f1-c613-45c6-ad3b-292bd9b500da",
+      "name": "Cek Status (GET)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -528,
+        128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "btMexPPUkbfb9Bts",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0001-4000-8000-000000000001",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a03dfe8a-cf45-4b06-887c-5acfe856392e",
+      "name": "IF Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0002-4000-8000-000000000002",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "fail",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "17dceae2-9bfd-45f1-a265-310445a6131f",
+      "name": "IF Fail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'Pembuatan video gagal: ' + ($json.data.failMsg || 'unknown error') }}"
+      },
+      "id": "9aecdeb2-89c7-45f6-bbed-bcec98b914e0",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        272,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = JSON.parse($json.data.resultJson);\nreturn [{\n  videoUrl: result.resultUrls?.[0] || null\n}];"
+      },
+      "id": "665ae057-27c1-4429-8ce1-f56cef307838",
+      "name": "Parse Video Url",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.videoUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "f9de5775-353b-4dee-9999-a6dae75fbe36",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ 'video_' + $now.toFormat('yyyyLLdd_HHmmss') + '.mp4' }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "19i0IQqro8p6SyQ_EMgX4ovbMeF6ICSn4",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "8a566b58-e00c-44d6-a32d-3e1ea4d1dcbf",
+      "name": "Google Drive Upload",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        528,
+        0
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "hXW38Uyh8ivXEgRa",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "n8n Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Task (POST)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task (POST)": {
+      "main": [
+        [
+          {
+            "node": "Wait 20 Detik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20 Detik": {
+      "main": [
+        [
+          {
+            "node": "Cek Status (GET)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status (GET)": {
+      "main": [
+        [
+          {
+            "node": "IF Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Success": {
+      "main": [
+        [
+          {
+            "node": "Parse Video Url",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fail": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 20 Detik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Video Url": {
+      "main": [
+        [
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Google Drive Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2b8c08a4-db50-4f66-8ed0-a58c2b6b74ef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "mVEr2gouPRS7D0bR",
+  "tags": []
+}
