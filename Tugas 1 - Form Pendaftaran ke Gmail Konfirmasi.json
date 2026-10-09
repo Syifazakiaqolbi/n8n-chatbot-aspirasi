@@ -1,0 +1,109 @@
+{
+  "name": "Tugas 1 - Form Pendaftaran ke Gmail Konfirmasi",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Form Pendaftaran",
+        "formDescription": "Silakan isi data diri kamu untuk pendaftaran.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nama",
+              "placeholder": "Masukkan nama lengkap",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "placeholder": "nama@email.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Kelas",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "TI-1A"
+                  },
+                  {
+                    "option": "TI-1B"
+                  },
+                  {
+                    "option": "TI-2A"
+                  },
+                  {
+                    "option": "TI-2B"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "94b891a4-bafd-4f74-a625-43d9976fb2ba",
+      "name": "n8n Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "49111f07-a97f-45c8-a59d-0ab2e4672ccf"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Konfirmasi Pendaftaran - {{ $json.Nama }} ({{ $json.Kelas }})",
+        "message": "=<html>\n<body style=\"font-family: Arial, sans-serif; color: #333;\">\n  <div style=\"max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; padding: 24px;\">\n    <h2 style=\"color: #2b6cb0;\">Halo {{ $json.Nama }}!</h2>\n    <p>Terima kasih sudah mendaftar. Berikut data pendaftaran kamu:</p>\n    <table style=\"border-collapse: collapse;\">\n      <tr><td style=\"padding: 4px 12px 4px 0;\"><b>Nama</b></td><td>: {{ $json.Nama }}</td></tr>\n      <tr><td style=\"padding: 4px 12px 4px 0;\"><b>Email</b></td><td>: {{ $json.Email }}</td></tr>\n      <tr><td style=\"padding: 4px 12px 4px 0;\"><b>Kelas</b></td><td>: {{ $json.Kelas }}</td></tr>\n    </table>\n    <p>Pendaftaran kamu sudah kami terima. Sampai jumpa di kelas <b>{{ $json.Kelas }}</b>!</p>\n    <p>Salam hangat,<br><b>Tim Pendaftaran</b></p>\n  </div>\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "afa7d4e1-b924-4b04-9962-d2ab0ead0832",
+      "name": "Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        0
+      ],
+      "webhookId": "tugas1-gmail-send",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "con9VOlStKJpnwKn",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "n8n Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a4d0d1ac-f684-423b-b386-466ba7591c34",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "JvkrJNV14kP3FkBA",
+  "tags": []
+}
