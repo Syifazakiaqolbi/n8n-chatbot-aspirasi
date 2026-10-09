@@ -1,0 +1,361 @@
+{
+  "name": "Tugas 2 - AI Image Generator ke Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Image Generator",
+        "formDescription": "Masukkan prompt gambar dan Chat ID Telegram tujuan.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Prompt",
+              "fieldType": "textarea",
+              "placeholder": "Contoh: kucing astronot di bulan, gaya kartun",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Chat ID Telegram",
+              "placeholder": "Contoh: 123456789",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8d0a19d8-cc1e-4b58-a879-9da933196c9b",
+      "name": "n8n Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        128
+      ],
+      "webhookId": "6f7f71d3-fd43-4241-bc73-eea0314ce601"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/jobs/createTask",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'google/nano-banana', input: { prompt: $json.Prompt, output_format: 'png', image_size: '1:1' } }) }}",
+        "options": {}
+      },
+      "id": "ff255c41-ecfd-487c-919a-f6a90e384de5",
+      "name": "Create Task (POST)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1040,
+        128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "btMexPPUkbfb9Bts",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "id": "c2309176-b392-44e3-b150-62a7d9b515b5",
+      "name": "Wait 10 Detik",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        128
+      ],
+      "webhookId": "tugas2-wait-10s"
+    },
+    {
+      "parameters": {
+        "url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('Create Task (POST)').first().json.data.taskId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "31aebb3a-a3ec-4334-b8f0-8ca725d44f6b",
+      "name": "Cek Status (GET)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -528,
+        128
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "btMexPPUkbfb9Bts",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1000000-0001-4000-8000-000000000001",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "67a6ce61-7046-479c-b2c8-99355ab5d690",
+      "name": "IF Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1000000-0002-4000-8000-000000000002",
+              "leftValue": "={{ $json.data.state }}",
+              "rightValue": "fail",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c169b1f0-fbb4-4d44-a67b-764c2e7eb0da",
+      "name": "IF Fail",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'Pembuatan gambar gagal: ' + ($json.data.failMsg || 'unknown error') }}"
+      },
+      "id": "8e60f9f6-0638-41b7-b545-1964d6a5b7ad",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        272,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse resultJson dari Kie AI dan ambil URL gambar yang valid\nconst data = $input.first().json.data;\n\nlet result = data.resultJson;\nif (typeof result === 'string') {\n  result = JSON.parse(result);\n}\n\nconst urls = (result.resultUrls || []).filter(\n  (u) => typeof u === 'string' && /^https?:\\/\\//.test(u)\n);\n\nif (urls.length === 0) {\n  throw new Error('Tidak ada URL gambar valid pada resultUrls');\n}\n\nreturn [\n  {\n    json: {\n      taskId: data.taskId,\n      imageUrl: urls[0],\n      allUrls: urls,\n    },\n  },\n];"
+      },
+      "id": "b8c4200b-85b0-4278-ae8b-73ab8517823f",
+      "name": "Code Parse URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.imageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "d5cc5959-b5de-4700-956f-e05a90b74fff",
+      "name": "Download Gambar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('n8n Form Trigger').first().json['Chat ID Telegram'] }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ 'Gambar selesai! Prompt: ' + $('n8n Form Trigger').first().json.Prompt }}"
+        }
+      },
+      "id": "e297886c-29a4-4eb5-894c-5ffe36f48802",
+      "name": "Telegram Kirim Gambar",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        0
+      ],
+      "webhookId": "tugas2-telegram-send",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "n8n Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Task (POST)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task (POST)": {
+      "main": [
+        [
+          {
+            "node": "Wait 10 Detik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 10 Detik": {
+      "main": [
+        [
+          {
+            "node": "Cek Status (GET)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status (GET)": {
+      "main": [
+        [
+          {
+            "node": "IF Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Success": {
+      "main": [
+        [
+          {
+            "node": "Code Parse URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Fail": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 10 Detik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Parse URL": {
+      "main": [
+        [
+          {
+            "node": "Download Gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Gambar": {
+      "main": [
+        [
+          {
+            "node": "Telegram Kirim Gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "51b01964-eacb-436d-b30c-2fdd3f5ec1de",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "BQ2aG90jF7q7GH00",
+  "tags": []
+}
