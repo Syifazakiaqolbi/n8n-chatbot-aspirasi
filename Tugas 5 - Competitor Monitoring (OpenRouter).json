@@ -1,0 +1,415 @@
+{
+  "name": "Tugas 5 - Competitor Monitoring (OpenRouter)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "dde00201-a8e4-460a-a550-aff1944965ee",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        304,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f6000000-0000-4000-8000-000000000001",
+              "name": "brand",
+              "value": "Tokopedia",
+              "type": "string"
+            },
+            {
+              "id": "f6000000-0000-4000-8000-000000000002",
+              "name": "kompetitor1",
+              "value": "Shopee",
+              "type": "string"
+            },
+            {
+              "id": "f6000000-0000-4000-8000-000000000003",
+              "name": "kompetitor2",
+              "value": "Lazada",
+              "type": "string"
+            },
+            {
+              "id": "f6000000-0000-4000-8000-000000000004",
+              "name": "chatId",
+              "value": "6049105471",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "437a7e1e-0243-41e3-8ccd-8b76c4a1dc79",
+      "name": "Konfigurasi Brand",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/news",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $json.brand, gl: 'id', hl: 'id', num: 10, tbs: 'qdr:m' }) }}",
+        "options": {}
+      },
+      "id": "4908c2a4-21ef-44c4-a1d7-8f40650c8168",
+      "name": "Serper - Brand",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "WN3RZnYuOsFMWVdO",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/news",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $json.kompetitor1, gl: 'id', hl: 'id', num: 10, tbs: 'qdr:m' }) }}",
+        "options": {}
+      },
+      "id": "29feac22-9d60-42be-a7a4-c8602f372638",
+      "name": "Serper - Kompetitor 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        496
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "WN3RZnYuOsFMWVdO",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/news",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $json.kompetitor2, gl: 'id', hl: 'id', num: 10, tbs: 'qdr:m' }) }}",
+        "options": {}
+      },
+      "id": "74a4faa2-36b0-4fa1-9ad5-37974f1d649b",
+      "name": "Serper - Kompetitor 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        752,
+        672
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "WN3RZnYuOsFMWVdO",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "012712b6-4509-469d-a800-95f8a749e3f0",
+      "name": "Gabung Hasil",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        992,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung Share of Voice (SoV) dari jumlah mention berita tiap brand\nconst cfg = $('Konfigurasi Brand').first().json;\n\nconst sources = [\n  { role: 'Brand Kamu',   name: cfg.brand,       data: $('Serper - Brand').first().json },\n  { role: 'Kompetitor 1', name: cfg.kompetitor1, data: $('Serper - Kompetitor 1').first().json },\n  { role: 'Kompetitor 2', name: cfg.kompetitor2, data: $('Serper - Kompetitor 2').first().json },\n];\n\nconst brands = sources.map(s => {\n  const news = Array.isArray(s.data.news) ? s.data.news : [];\n  const key = String(s.name).toLowerCase();\n\n  // Mention = artikel yang judul/snippet-nya memuat nama brand\n  const relevant = news.filter(n =>\n    `${n.title || ''} ${n.snippet || ''}`.toLowerCase().includes(key)\n  );\n\n  const headlines = relevant.slice(0, 10).map((n, i) =>\n    `${i + 1}. [${n.source || '-'}, ${n.date || '-'}] ${n.title || ''} - ${n.snippet || ''}`\n  );\n\n  return {\n    role: s.role,\n    name: s.name,\n    totalResults: news.length,\n    mentions: relevant.length,\n    headlines,\n  };\n});\n\nconst totalMentions = brands.reduce((sum, b) => sum + b.mentions, 0);\nbrands.forEach(b => {\n  b.sov = totalMentions > 0 ? Math.round((b.mentions / totalMentions) * 1000) / 10 : 0;\n});\n\nconst processedAt = DateTime.now().setZone('Asia/Jakarta').toFormat(\"dd LLL yyyy, HH:mm 'WIB'\");\n\nconst dataText = brands.map(b =>\n  `=== ${b.role.toUpperCase()}: ${b.name} (${b.mentions} berita) ===\\n` +\n  (b.headlines.length ? b.headlines.join('\\n') : 'Tidak ada berita relevan ditemukan.')\n).join('\\n\\n');\n\nconst prompt =\n`Kamu adalah analis reputasi merek. Analisis sentimen kumpulan berita terbaru berikut untuk 3 brand.\nBerikan skor reputasi 1-10 untuk setiap brand (1 = sangat buruk, 10 = sangat baik) dan ringkasan eksekutif dalam Bahasa Indonesia.\nJika tidak ada berita untuk suatu brand, beri sentimen \"Netral\" dan skor 5 dengan alasan data tidak tersedia.\n\nJawab HANYA dengan JSON valid (tanpa markdown, tanpa teks lain) dengan skema:\n{\"brands\":[{\"name\":\"<nama brand persis seperti diberikan>\",\"sentiment\":\"Positif|Netral|Negatif\",\"reputation_score\":<angka 1-10>,\"reasoning\":\"<alasan singkat 1-2 kalimat>\"}],\"executive_summary\":\"<ringkasan eksekutif 3-4 kalimat>\",\"recommendations\":[\"<rekomendasi 1>\",\"<rekomendasi 2>\",\"<rekomendasi 3>\"]}\n\nDATA BERITA:\n${dataText}`;\n\nreturn [{ json: { brands, totalMentions, processedAt, prompt } }];"
+      },
+      "id": "51aa8557-af3d-456e-98ca-13a4524befbd",
+      "name": "Hitung SoV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}"
+      },
+      "id": "99f93341-7cab-475e-9296-1e5c2a38e0ad",
+      "name": "Analisis Sentimen (AI)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1440,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "a3e6cd34-da45-4f80-8beb-78b8553dede4",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        704
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "SAeHa7pOw2lJ3uiN",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun hasil analisis (SoV + AI) menjadi templat HTML laporan\nconst base = $('Hitung SoV').first().json;\nconst first = $input.first().json;\n\n// Parse JSON dari output AI\nlet raw = String(first.text || first.output || '').replace(/```json|```/g, '').trim();\nconst s = raw.indexOf('{'), e = raw.lastIndexOf('}');\nlet ai = { brands: [], executive_summary: '', recommendations: [] };\ntry {\n  ai = JSON.parse(raw.slice(s, e + 1));\n} catch (err) {\n  ai.executive_summary = 'Output AI tidak dapat dibaca sebagai JSON: ' + raw.slice(0, 300);\n}\n\nconst esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst rows = base.brands.map((b, i) => {\n  const a = (ai.brands || []).find(x => String(x.name).toLowerCase() === String(b.name).toLowerCase())\n         || (ai.brands || [])[i] || {};\n  return { ...b, sentiment: a.sentiment || '-', score: a.reputation_score ?? '-', reasoning: a.reasoning || '-' };\n});\n\nconst leader = [...rows].sort((x, y) => y.sov - x.sov)[0];\nconst colorFor = s => ({ Positif: '#1E8E3E', Netral: '#B26A00', Negatif: '#C5221F' }[s] || '#555');\n\nconst tableRows = rows.map(r => `\n  <tr>\n    <td><b>${esc(r.name)}</b><br><span class=\"muted\">${esc(r.role)}</span></td>\n    <td class=\"c\">${r.mentions}</td>\n    <td class=\"c\">${r.sov}%</td>\n    <td class=\"c\" style=\"color:${colorFor(r.sentiment)};font-weight:bold\">${esc(r.sentiment)}</td>\n    <td class=\"c\"><span class=\"score\">${esc(r.score)}/10</span></td>\n    <td>${esc(r.reasoning)}</td>\n  </tr>`).join('');\n\nconst bars = rows.map(r => `\n  <div class=\"barrow\">\n    <div class=\"barlabel\">${esc(r.name)}</div>\n    <div class=\"bartrack\"><div class=\"barfill\" style=\"width:${Math.max(r.sov, 2)}%\"></div></div>\n    <div class=\"barval\">${r.sov}%</div>\n  </div>`).join('');\n\nconst recs = (ai.recommendations || []).map(x => `<li>${esc(x)}</li>`).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang=\"id\"><head><meta charset=\"UTF-8\"><title>Laporan Competitor Monitoring</title>\n<style>\n  body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:0;padding:32px;font-size:13px;line-height:1.5}\n  .head{background:#1F4E79;color:#fff;padding:22px 26px;border-radius:8px}\n  .head h1{margin:0 0 4px;font-size:22px}\n  .head p{margin:0;font-size:12px;opacity:.9}\n  h2{color:#1F4E79;font-size:16px;border-bottom:2px solid #1F4E79;padding-bottom:4px;margin-top:26px}\n  .box{background:#EAF1F8;border-left:4px solid #1F4E79;padding:12px 16px;border-radius:4px}\n  table{width:100%;border-collapse:collapse;margin-top:8px}\n  th{background:#1F4E79;color:#fff;padding:8px;text-align:left;font-size:12px}\n  td{border:1px solid #cfd8e3;padding:8px;vertical-align:top}\n  tr:nth-child(even) td{background:#f6f9fc}\n  .c{text-align:center}.muted{color:#777;font-size:11px}\n  .score{background:#1F4E79;color:#fff;padding:3px 9px;border-radius:10px;font-weight:bold}\n  .barrow{display:flex;align-items:center;margin:8px 0}\n  .barlabel{width:150px;font-weight:bold}\n  .bartrack{flex:1;background:#e3e9f0;height:16px;border-radius:8px;overflow:hidden}\n  .barfill{background:#2E75B6;height:16px}\n  .barval{width:60px;text-align:right;font-weight:bold}\n  .foot{margin-top:30px;font-size:11px;color:#777;border-top:1px solid #ddd;padding-top:8px}\n</style></head><body>\n  <div class=\"head\">\n    <h1>Laporan Competitor Monitoring</h1>\n    <p>${esc(rows.map(r => r.name).join(' vs '))} | Diproses: ${esc(base.processedAt)}</p>\n  </div>\n\n  <h2>Ringkasan Eksekutif</h2>\n  <div class=\"box\">\n    <p><b>${esc(leader.name)}</b> memiliki Share of Voice tertinggi (${leader.sov}%) dari total ${base.totalMentions} mention berita.</p>\n    <p>${esc(ai.executive_summary)}</p>\n  </div>\n\n  <h2>Share of Voice (SoV)</h2>\n  ${bars}\n\n  <h2>Tabel Perbandingan</h2>\n  <table>\n    <tr><th>Brand</th><th>Mention</th><th>SoV</th><th>Sentimen</th><th>Skor Reputasi</th><th>Alasan</th></tr>\n    ${tableRows}\n  </table>\n\n  <h2>Rekomendasi</h2>\n  <ol>${recs || '<li>-</li>'}</ol>\n\n  <div class=\"foot\">Sumber data: Serper API (Google News). Analisis sentimen: Gemini. processedAt: ${esc(base.processedAt)}</div>\n</body></html>`;\n\nreturn [{ json: { html, processedAt: base.processedAt } }];"
+      },
+      "id": "2a947e8c-6351-40f7-9016-d5e9b67b121a",
+      "name": "Susun Laporan HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.html, format: 'A4', landscape: false }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "0aa718c3-236a-4d66-ad93-b642c6c64586",
+      "name": "HTML ke PDF (PDFShift)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        496
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "N6H8kcCmLyMPesyt",
+          "name": "PDFShift"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Konfigurasi Brand').first().json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ 'Laporan Competitor Monitoring: ' + $('Konfigurasi Brand').first().json.brand + ' vs ' + $('Konfigurasi Brand').first().json.kompetitor1 + ' vs ' + $('Konfigurasi Brand').first().json.kompetitor2 }}",
+          "fileName": "Laporan_Competitor_Monitoring.pdf"
+        }
+      },
+      "id": "7cae4ab4-11d7-4604-b7c6-37d909bbf852",
+      "name": "Kirim PDF ke Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2240,
+        496
+      ],
+      "webhookId": "a7000000-0000-4000-8000-000000000001",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Konfigurasi Brand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfigurasi Brand": {
+      "main": [
+        [
+          {
+            "node": "Serper - Brand",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Serper - Kompetitor 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Serper - Kompetitor 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper - Brand": {
+      "main": [
+        [
+          {
+            "node": "Gabung Hasil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Serper - Kompetitor 1": {
+      "main": [
+        [
+          {
+            "node": "Gabung Hasil",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Serper - Kompetitor 2": {
+      "main": [
+        [
+          {
+            "node": "Gabung Hasil",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Gabung Hasil": {
+      "main": [
+        [
+          {
+            "node": "Hitung SoV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hitung SoV": {
+      "main": [
+        [
+          {
+            "node": "Analisis Sentimen (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisis Sentimen (AI)": {
+      "main": [
+        [
+          {
+            "node": "Susun Laporan HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Susun Laporan HTML": {
+      "main": [
+        [
+          {
+            "node": "HTML ke PDF (PDFShift)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML ke PDF (PDFShift)": {
+      "main": [
+        [
+          {
+            "node": "Kirim PDF ke Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analisis Sentimen (AI)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c9c8d3f0-dfe7-4cc9-baf1-93efe0fab1c9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "574dHM2KfmtkVMqV",
+  "tags": []
+}
