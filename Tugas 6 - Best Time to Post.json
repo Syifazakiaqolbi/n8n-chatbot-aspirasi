@@ -1,0 +1,411 @@
+{
+  "name": "Tugas 6 - Best Time to Post",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "87ec3eb5-af21-4d47-ab82-62c790d71217",
+      "name": "Schedule Trigger (Harian)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1kkp0W1dMkoiqPPKkiQs3AOf06DPcxcENuxNK53x5XF0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Data Posting",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "2d181d8d-39e0-43aa-8063-11528c5c4219",
+      "name": "Baca Data Posting",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung Engagement Score tiap postingan dengan bobot\nconst WEIGHT = { likes: 1, comments: 2, shares: 3 };\nconst num = v => Number(String(v ?? '').replace(/[^0-9.-]/g, '')) || 0;\n\nconst out = [];\nfor (const item of $input.all()) {\n  const r = item.json;\n\n  // Jam posting: \"9\" atau \"09:00\" -> 9\n  const jam = parseInt(String(r['Jam Posting']).split(':')[0], 10);\n  if (Number.isNaN(jam)) continue;   // lewati baris kosong/tidak valid\n\n  const likes = num(r['Likes']);\n  const comments = num(r['Comments']);\n  const shares = num(r['Shares']);\n\n  const engagement_score =\n    likes * WEIGHT.likes + comments * WEIGHT.comments + shares * WEIGHT.shares;\n\n  out.push({ json: {\n    tanggal: r['Tanggal Posting'], jam, platform: r['Platform'],\n    likes, comments, shares, engagement_score\n  } });\n}\nreturn out;"
+      },
+      "id": "1cbafa70-646f-4392-aa70-67e1a2fdde35",
+      "name": "Hitung Engagement Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agregasi: rata-rata engagement per jam, urutkan, ambil 5 jam terbaik\nconst all = $input.all();\nconst groups = {};\nfor (const { json: p } of all) {\n  const g = groups[p.jam] ??= { jam: p.jam, total: 0, likes: 0, comments: 0, shares: 0, count: 0, platforms: new Set() };\n  g.total += p.engagement_score;\n  g.likes += p.likes;\n  g.comments += p.comments;\n  g.shares += p.shares;\n  g.count += 1;\n  if (p.platform) g.platforms.add(p.platform);\n}\n\nconst r2 = n => Math.round(n * 100) / 100;\nconst ranked = Object.values(groups)\n  .map(g => ({ ...g, avg: r2(g.total / g.count) }))\n  .sort((a, b) => b.avg - a.avg || a.jam - b.jam)   // rata-rata tertinggi dulu\n  .slice(0, 5);                                      // 5 jam terbaik\n\nconst stamp = DateTime.now().setZone('Asia/Jakarta').toFormat('dd/MM/yyyy, HH.mm');\n\n// Kolom mengikuti header tab \"Hasil Analisis\"\nreturn ranked.map((g, i) => ({ json: {\n  'Peringkat': i + 1,\n  'Jam Posting': String(g.jam).padStart(2, '0') + ':00',\n  'Rata-rata Engagement': g.avg,\n  'Jumlah Posting': g.count,\n  'avgLikes': r2(g.likes / g.count),\n  'avgComments': r2(g.comments / g.count),\n  'avgShares': r2(g.shares / g.count),\n  'Dianalisis Pada': [...g.platforms].join(', '),\n  'engagementScore': g.avg,\n  'rekomendasi': i < 3 ? '⭐ SANGAT DIREKOMENDASIKAN' : '✅ DIREKOMENDASIKAN',\n  'tanggalAnalisis': stamp,\n  'totalDataDianalisis': all.length\n} }));"
+      },
+      "id": "e0d37adb-1d52-4296-8411-92417179f014",
+      "name": "Agregasi per Jam",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "1kkp0W1dMkoiqPPKkiQs3AOf06DPcxcENuxNK53x5XF0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hasil Analisis",
+          "mode": "name"
+        },
+        "keepFirstRow": true
+      },
+      "id": "1a0b07d5-5b39-4cea-a664-36cd1e1e5a21",
+      "name": "Clear Hasil Analisis Lama",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        0
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Setelah Clear, node ini mengembalikan 5 baris hasil analisis untuk ditulis ke sheet\nreturn $('Agregasi per Jam').all().map(i => ({ json: i.json }));"
+      },
+      "id": "d0cfe1c0-8a7f-4bcf-89d8-b5aa03798fec",
+      "name": "Ambil 5 Jam Terbaik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kkp0W1dMkoiqPPKkiQs3AOf06DPcxcENuxNK53x5XF0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Hasil Analisis",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Peringkat",
+              "displayName": "Peringkat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Jam Posting",
+              "displayName": "Jam Posting",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rata-rata Engagement",
+              "displayName": "Rata-rata Engagement",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Jumlah Posting",
+              "displayName": "Jumlah Posting",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avgLikes",
+              "displayName": "avgLikes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avgComments",
+              "displayName": "avgComments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avgShares",
+              "displayName": "avgShares",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Dianalisis Pada",
+              "displayName": "Dianalisis Pada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "engagementScore",
+              "displayName": "engagementScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rekomendasi",
+              "displayName": "rekomendasi",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tanggalAnalisis",
+              "displayName": "tanggalAnalisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "totalDataDianalisis",
+              "displayName": "totalDataDianalisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e9588c35-1b70-491c-b296-3bedd2fa9c4a",
+      "name": "Tulis Hasil Analisis Baru",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1328,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun pesan Telegram (HTML parse mode: <b> untuk teks tebal)\nconst rows = $('Agregasi per Jam').all().map(i => i.json);\nconst medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];\n\nconst tanggal = DateTime.now().setZone('Asia/Jakarta').setLocale('id').toFormat('cccc, dd LLLL yyyy');\n\nconst lines = rows.map((r, i) =>\n  `${medals[i]} <b>${r['Jam Posting']}</b> | skor rata-rata <b>${r['Rata-rata Engagement']}</b> (${r['Jumlah Posting']} posting)`\n);\n\nconst best = rows[0];\nconst message = [\n  '📊 <b>LAPORAN HARIAN: 5 JAM TERBAIK UNTUK POSTING</b>',\n  `🗓️ ${tanggal}`,\n  '',\n  ...lines,\n  '',\n  best ? `🚀 <b>Rekomendasi:</b> jadwalkan konten utama pukul <b>${best['Jam Posting']}</b> untuk engagement tertinggi!` : '',\n  '',\n  '<i>Engagement Score = Likes x1 + Comments x2 + Shares x3</i>'\n].join('\\n');\n\nreturn [{ json: { message } }];"
+      },
+      "id": "fa3ccda8-1b6f-4f2b-8afb-8afb2ffa0fe2",
+      "name": "Format Pesan Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        0
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "8a1501cb-7231-4992-a96c-1c8424c62a58",
+      "name": "Kirim Laporan ke Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1760,
+        0
+      ],
+      "webhookId": "c8000000-0000-4000-8000-000000000001",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (Harian)": {
+      "main": [
+        [
+          {
+            "node": "Baca Data Posting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data Posting": {
+      "main": [
+        [
+          {
+            "node": "Hitung Engagement Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hitung Engagement Score": {
+      "main": [
+        [
+          {
+            "node": "Agregasi per Jam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agregasi per Jam": {
+      "main": [
+        [
+          {
+            "node": "Clear Hasil Analisis Lama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Hasil Analisis Lama": {
+      "main": [
+        [
+          {
+            "node": "Ambil 5 Jam Terbaik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil 5 Jam Terbaik": {
+      "main": [
+        [
+          {
+            "node": "Tulis Hasil Analisis Baru",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tulis Hasil Analisis Baru": {
+      "main": [
+        [
+          {
+            "node": "Format Pesan Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Pesan Telegram": {
+      "main": [
+        [
+          {
+            "node": "Kirim Laporan ke Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1d9c6808-a56e-40d7-8a13-3b44b9e857c5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "3rDfHeHplZlLbCPz",
+  "tags": []
+}
