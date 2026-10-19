@@ -1,0 +1,273 @@
+{
+  "name": "Tugas 1 - Invoice Otomatis",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Form Invoice Klien",
+        "formDescription": "Isi data berikut untuk membuat dan mengirim invoice otomatis.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nama Klien",
+              "placeholder": "Contoh: PT Maju Jaya",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Jam Kerja",
+              "fieldType": "number",
+              "placeholder": "Contoh: 10",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Rate per Jam",
+              "fieldType": "number",
+              "placeholder": "Contoh: 150000",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email Klien",
+              "fieldType": "email",
+              "placeholder": "klien@email.com",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e3db8b74-cd68-4748-9b00-724931fb43ac",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c03056fa-e4c6-4cb8-a7cf-7340f0898c51"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "nama_klien",
+              "value": "={{ $json['Nama Klien'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "email_klien",
+              "value": "={{ $json['Email Klien'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "jam_kerja",
+              "value": "={{ Number($json['Jam Kerja']) }}",
+              "type": "number"
+            },
+            {
+              "id": "f4",
+              "name": "rate",
+              "value": "={{ Number($json['Rate per Jam']) }}",
+              "type": "number"
+            },
+            {
+              "id": "f5",
+              "name": "total_biaya",
+              "value": "={{ Number($json['Jam Kerja']) * Number($json['Rate per Jam']) }}",
+              "type": "number"
+            },
+            {
+              "id": "f6",
+              "name": "rate_idr",
+              "value": "={{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number($json['Rate per Jam'])) }}",
+              "type": "string"
+            },
+            {
+              "id": "f7",
+              "name": "total_biaya_idr",
+              "value": "={{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number($json['Jam Kerja']) * Number($json['Rate per Jam'])) }}",
+              "type": "string"
+            },
+            {
+              "id": "f8",
+              "name": "tanggal_invoice",
+              "value": "={{ $now.setZone('Asia/Jakarta').setLocale('id').toFormat('dd LLLL yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "f9",
+              "name": "nomor_invoice",
+              "value": "={{ 'INV-' + $now.setZone('Asia/Jakarta').toFormat('yyyyMMdd-HHmmss') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1a93f1f8-dacd-4ced-a121-f1928beac10a",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n<meta charset=\"UTF-8\">\n<style>\n  body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; margin: 0; padding: 40px; }\n  .header { display: flex; justify-content: space-between; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }\n  .header h1 { margin: 0; color: #2563eb; font-size: 32px; }\n  .meta { text-align: right; font-size: 13px; line-height: 1.6; }\n  .client { margin: 28px 0; font-size: 14px; }\n  .client .label { color: #6b7280; font-size: 12px; text-transform: uppercase; }\n  .client .name { font-size: 18px; font-weight: bold; }\n  table { width: 100%; border-collapse: collapse; margin-top: 8px; }\n  th { background: #2563eb; color: #fff; text-align: left; padding: 10px; font-size: 13px; }\n  td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }\n  .right { text-align: right; }\n  .total { margin-top: 20px; text-align: right; font-size: 20px; font-weight: bold; }\n  .total span { color: #2563eb; }\n  .note { margin-top: 40px; padding: 12px; background: #f3f4f6; font-size: 12px; color: #4b5563; border-radius: 4px; }\n</style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>INVOICE</h1>\n    <div class=\"meta\">\n      <div><b>No. Invoice:</b> {{ $json.nomor_invoice }}</div>\n      <div><b>Tanggal:</b> {{ $json.tanggal_invoice }}</div>\n    </div>\n  </div>\n\n  <div class=\"client\">\n    <div class=\"label\">Ditagihkan kepada</div>\n    <div class=\"name\">{{ $json.nama_klien }}</div>\n    <div>{{ $json.email_klien }}</div>\n  </div>\n\n  <table>\n    <thead>\n      <tr>\n        <th>Deskripsi</th>\n        <th class=\"right\">Jam Kerja</th>\n        <th class=\"right\">Rate / Jam</th>\n        <th class=\"right\">Subtotal</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr>\n        <td>Jasa profesional</td>\n        <td class=\"right\">{{ $json.jam_kerja }} jam</td>\n        <td class=\"right\">{{ $json.rate_idr }}</td>\n        <td class=\"right\">{{ $json.total_biaya_idr }}</td>\n      </tr>\n    </tbody>\n  </table>\n\n  <div class=\"total\">Total Biaya: <span>{{ $json.total_biaya_idr }}</span></div>\n\n  <div class=\"note\">Terima kasih atas kepercayaan Anda. Harap lakukan pembayaran sesuai detail yang telah disepakati.</div>\n</body>\n</html>"
+      },
+      "id": "91211021-5af5-47da-90cf-3f39ce6f3833",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "html_content": "={{ $json.html }}",
+        "viewPortHeight": 1500,
+        "output_filename": "={{ $('Edit Fields').item.json.nomor_invoice }}"
+      },
+      "id": "5290a499-fe92-43f2-ad6d-7f2f0c1f6a3b",
+      "name": "HTML to PDF",
+      "type": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "credentials": {
+        "htmlcsstopdfApi": {
+          "id": "GZQAM7ZQg83EN97p",
+          "name": "HTML to PDF account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.pdf_url || $json.url || $json.file_url || $json.output_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "91262355-efcc-499a-acf6-2263bde3ffcf",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Edit Fields').item.json.email_klien }}",
+        "subject": "={{ 'Invoice ' + $('Edit Fields').item.json.nomor_invoice + ' - ' + $('Edit Fields').item.json.nama_klien }}",
+        "message": "=<p>Halo {{ $('Edit Fields').item.json.nama_klien }},</p>\n<p>Terima kasih sudah bekerja sama dengan kami! Berikut kami lampirkan invoice <b>{{ $('Edit Fields').item.json.nomor_invoice }}</b> dengan total tagihan <b>{{ $('Edit Fields').item.json.total_biaya_idr }}</b> ({{ $('Edit Fields').item.json.jam_kerja }} jam).</p>\n<p>Silakan cek file PDF terlampir. Jika ada pertanyaan, balas saja email ini ya.</p>\n<p style=\"background:#fff7ed;border-left:4px solid #f59e0b;padding:10px;font-size:13px;\">\n<b>Catatan keamanan:</b> Perusahaan kami tidak pernah meminta password atau data sensitif lainnya melalui email. Abaikan dan laporkan jika ada pesan yang mengatasnamakan kami dan meminta hal tersebut.</p>\n<p>Salam hangat,<br>Tim Billing</p>",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "id": "245460dd-8cc5-4a69-b291-5bf796495379",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        0
+      ],
+      "webhookId": "c3d4e5f6-2222-4333-8444-555566667777",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "con9VOlStKJpnwKn",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "cae0149e-1083-4e99-9439-b8f578d30a98",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "1h4RjBZhMyFyWK7s",
+  "tags": []
+}
