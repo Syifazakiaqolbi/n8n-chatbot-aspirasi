@@ -1,0 +1,387 @@
+{
+  "name": "Tugas 5 - Briefing Pagi 5 Poin Utama Pasar",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        112
+      ],
+      "id": "1f42d2f9-4cf3-42f8-ad29-44cf8844919e",
+      "name": "Schedule Trigger 07:00"
+    },
+    {
+      "parameters": {
+        "url": "https://www.cnbcindonesia.com/market/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "040781ef-0882-43bb-898b-e32127f59659",
+      "name": "RSS CNBC Indonesia"
+    },
+    {
+      "parameters": {
+        "url": "https://finance.detik.com/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        208
+      ],
+      "id": "68afc220-9dcb-4285-87da-1d087fdad96a",
+      "name": "RSS Finance Detik"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        448,
+        112
+      ],
+      "id": "2a42f37d-67db-4b10-b282-b352a18f5109",
+      "name": "Merge Berita"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "isoDate",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        672,
+        112
+      ],
+      "id": "5fe963e1-3d98-42b5-aad4-9231e5237576",
+      "name": "Sort Terbaru"
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        880,
+        112
+      ],
+      "id": "9db5e5ab-7a6a-4e0c-9aac-de8fb06d5547",
+      "name": "Limit 10 Artikel"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        112
+      ],
+      "id": "0de4eaa6-d3d4-489b-a556-7caf867f80bb",
+      "name": "HTTP Request (GET URL)"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "judul",
+              "cssSelector": "h1"
+            },
+            {
+              "key": "isi",
+              "cssSelector": ".detail-text, .detail__body-text"
+            }
+          ]
+        },
+        "options": {
+          "trimValues": true,
+          "cleanUpText": true
+        }
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        112
+      ],
+      "id": "b44304cf-2a46-4c30-98df-576754706844",
+      "name": "Extract HTML Content"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "judul"
+            },
+            {
+              "fieldToAggregate": "isi"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        112
+      ],
+      "id": "6689c0d9-d6e2-4083-a9d3-d41af72aeb79",
+      "name": "Aggregate Artikel"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Berikut kumpulan berita keuangan terbaru:\\n\\n' + $json.judul.map((j,i) => (i+1) + '. ' + j + '\\n' + String($json.isi[i] || '').slice(0,1500)).join('\\n\\n---\\n\\n') }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah analis pasar keuangan Indonesia. Ringkas kumpulan berita yang diberikan menjadi tepat 5 poin utama berjudul '5 Poin Utama Pergerakan Pasar Hari Ini'. Aturan: gunakan Bahasa Indonesia yang ringkas dan profesional, format poin bernomor 1-5, tiap poin maksimal 2 kalimat, sebutkan angka/emiten/komoditas penting jika ada, dan jangan menambah informasi di luar berita. Awali dengan baris judul lalu langsung 5 poin tanpa kata pembuka."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1760,
+        112
+      ],
+      "id": "4b556e72-6fdc-4f35-b793-4c0b5d64394b",
+      "name": "Ringkas 5 Poin Pasar"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        320
+      ],
+      "id": "97a5bec3-83d8-4609-a67e-ac79501b861e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2112,
+        112
+      ],
+      "id": "1bc53222-ff4a-4a40-93ce-137dfffec7a1",
+      "name": "Kirim ke Telegram Tim Investasi",
+      "webhookId": "0c04bb84-28ed-4fa2-a3d4-4671e5cd6b1a",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger 07:00": {
+      "main": [
+        [
+          {
+            "node": "RSS CNBC Indonesia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Finance Detik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS CNBC Indonesia": {
+      "main": [
+        [
+          {
+            "node": "Merge Berita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Finance Detik": {
+      "main": [
+        [
+          {
+            "node": "Merge Berita",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Berita": {
+      "main": [
+        [
+          {
+            "node": "Sort Terbaru",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort Terbaru": {
+      "main": [
+        [
+          {
+            "node": "Limit 10 Artikel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit 10 Artikel": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (GET URL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (GET URL)": {
+      "main": [
+        [
+          {
+            "node": "Extract HTML Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract HTML Content": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Artikel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Artikel": {
+      "main": [
+        [
+          {
+            "node": "Ringkas 5 Poin Pasar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ringkas 5 Poin Pasar": {
+      "main": [
+        [
+          {
+            "node": "Kirim ke Telegram Tim Investasi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Ringkas 5 Poin Pasar",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65772083-5f67-48f9-9be5-6e091891262b",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "OlVC8INVOkHBLzju",
+  "tags": []
+}
