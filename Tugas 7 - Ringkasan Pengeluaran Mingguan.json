@@ -1,0 +1,287 @@
+{
+  "name": "Tugas 7 - Ringkasan Pengeluaran Mingguan",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "e8629f5a-1c5d-4494-8c57-33d60b965966",
+      "name": "Schedule Trigger Mingguan",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17F3I6b2ROo0uTf1rq07RPT4dd-zh3NhD7bgAz1wmG18",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17F3I6b2ROo0uTf1rq07RPT4dd-zh3NhD7bgAz1wmG18/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "54a67bb5-a3d8-4f36-9c96-5e3b08d0ffec",
+      "name": "Ambil Log Pengeluaran",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter transaksi 7 hari terakhir (hari ini + 6 hari ke belakang), zona Asia/Jakarta\nconst tz = 'Asia/Jakarta';\nconst akhir = $now.setZone(tz).endOf('day');\nconst awal = akhir.minus({ days: 6 }).startOf('day');\n\nconst rupiah = (n) => 'Rp' + Number(n).toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');\n\nfunction parseTanggal(v) {\n  if (v === undefined || v === null || String(v).trim() === '') return null;\n  const s = String(v).trim();\n  let dt = DateTime.fromFormat(s, 'd/M/yyyy', { zone: tz });\n  if (!dt.isValid) dt = DateTime.fromISO(s, { zone: tz });\n  return dt.isValid ? dt : null;\n}\n\nconst transaksi = [];\nfor (const item of $input.all()) {\n  const r = item.json;\n  const dt = parseTanggal(r['Tanggal']);\n  if (!dt) continue;                         // lewati baris kosong / tanggal tidak valid\n  if (dt < awal || dt > akhir) continue;     // di luar 7 hari terakhir\n  transaksi.push({\n    tanggal: dt.toFormat('dd/MM/yyyy'),\n    kategori: r['Kategori'] || '-',\n    deskripsi: r['Deskripsi'] || '-',\n    metode: r['Metode Pembayaran'] || '-',\n    jumlah: Number(String(r['Jumlah (IDR)'] || '0').replace(/[^\\d]/g, '')) || 0,\n    penerima: r['Penerima'] || '-',\n  });\n}\n\ntransaksi.sort((a, b) => a.tanggal.split('/').reverse().join('').localeCompare(b.tanggal.split('/').reverse().join('')));\n\nconst totalPengeluaran = transaksi.reduce((s, t) => s + t.jumlah, 0);\n\nconst perKategori = {};\nfor (const t of transaksi) perKategori[t.kategori] = (perKategori[t.kategori] || 0) + t.jumlah;\nconst ringkasanKategori = Object.entries(perKategori)\n  .sort((a, b) => b[1] - a[1])\n  .map(([k, v]) => `- ${k}: ${rupiah(v)}`)\n  .join('\\n');\n\nconst dataTerformat = transaksi\n  .map((t, i) => `${i + 1}. ${t.tanggal} | ${t.kategori} | ${t.deskripsi} | ${t.metode} | ${rupiah(t.jumlah)} | ${t.penerima}`)\n  .join('\\n');\n\n// Selalu kembalikan 1 item agar node If tetap berjalan walau datanya kosong\nreturn [{\n  json: {\n    ada_data: transaksi.length > 0,\n    total_transaksi: transaksi.length,\n    total_pengeluaran: totalPengeluaran,\n    total_pengeluaran_rp: rupiah(totalPengeluaran),\n    periode: `${awal.toFormat('dd/MM/yyyy')} - ${akhir.toFormat('dd/MM/yyyy')}`,\n    ringkasan_kategori: ringkasanKategori,\n    data_terformat: dataTerformat,\n    transaksi,\n  },\n}];"
+      },
+      "id": "1acb009f-d7a4-4cb1-8a47-bd4598ade3aa",
+      "name": "Filter 7 Hari Terakhir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1d2e3f4-0001-4000-8000-0000000000aa",
+              "leftValue": "={{ $json.total_transaksi }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d7e362e7-3c79-48fd-a939-307247f93740",
+      "name": "Ada Pengeluaran?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Berikut data pengeluaran saya periode {{ $json.periode }}.\n\nTotal transaksi: {{ $json.total_transaksi }}\nTotal pengeluaran: {{ $json.total_pengeluaran_rp }}\n\nRingkasan per kategori:\n{{ $json.ringkasan_kategori }}\n\nDetail transaksi (Tanggal | Kategori | Deskripsi | Metode | Jumlah | Penerima):\n{{ $json.data_terformat }}\n\nTolong analisis kebiasaan belanja saya dan beri satu saran penghematan yang konkret.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah asisten keuangan pribadi yang ramah dan praktis. Tugasmu menganalisis data pengeluaran mingguan pengguna.\n\nAturan jawaban:\n1. Tulis dalam Bahasa Indonesia yang santai tapi sopan, maksimal sekitar 150 kata.\n2. Bagian \"Analisis Kebiasaan Belanja\": sebutkan kategori terbesar, pola metode pembayaran, dan satu hal menarik atau boros yang terlihat dari data.\n3. Bagian \"Saran Penghematan\": berikan TEPAT SATU saran yang konkret, spesifik ke transaksi di data, lengkap dengan perkiraan nominal yang bisa dihemat per minggu atau per bulan.\n4. Jangan menambah data yang tidak ada. Jangan pakai format markdown (tanpa tanda * atau #), cukup teks biasa dan emoji secukupnya."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "abb8f366-2abd-4e7b-b021-6c207e219fae",
+      "name": "AI Analisis Pengeluaran",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        912,
+        0
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "ddf640ed-f2da-47c3-a3c5-76cf45004904",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        928,
+        224
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3dd4ffcf-ae15-4cc9-9581-800ce88c89a1",
+      "name": "Kirim Analisis ke Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1264,
+        0
+      ],
+      "webhookId": "e5dcbfa1-090c-45b1-b265-a00f6c1f687b",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "=Nihil 📭\n\nTidak ada pengeluaran yang tercatat pada 7 hari terakhir ({{ $('Filter 7 Hari Terakhir').first().json.periode }}). Proses dihentikan.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0e754eff-c1bd-43ae-8ee9-ea2296290274",
+      "name": "Kirim Notifikasi Nihil",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        352
+      ],
+      "webhookId": "dbd889a7-8859-4a47-9446-506fa8c472b3",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger Mingguan": {
+      "main": [
+        [
+          {
+            "node": "Ambil Log Pengeluaran",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Log Pengeluaran": {
+      "main": [
+        [
+          {
+            "node": "Filter 7 Hari Terakhir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter 7 Hari Terakhir": {
+      "main": [
+        [
+          {
+            "node": "Ada Pengeluaran?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ada Pengeluaran?": {
+      "main": [
+        [
+          {
+            "node": "AI Analisis Pengeluaran",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kirim Notifikasi Nihil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Analisis Pengeluaran",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analisis Pengeluaran": {
+      "main": [
+        [
+          {
+            "node": "Kirim Analisis ke Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c68cb867-cb45-4983-92e6-0754784e00a8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "RajLM3iB8GTd4KJT",
+  "tags": []
+}
