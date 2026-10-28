@@ -1,0 +1,286 @@
+{
+  "name": "Tugas 9 - Pemantau Sinyal Teknikal Saham",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "44250edf-e634-4f92-80d9-3e73ae7c4906",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "watchlist",
+              "value": "={{ [\"AAPL\", \"TSLA\", \"MSFT\"] }}",
+              "type": "array"
+            },
+            {
+              "id": "a2",
+              "name": "range",
+              "value": "1y",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "01ccb56a-48fb-4e5a-b92b-42a886183c98",
+      "name": "Watchlist",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "watchlist",
+        "options": {
+          "destinationFieldName": "symbol"
+        }
+      },
+      "id": "3d8f51b1-aba4-4e93-a7fb-cbb4cc37b27f",
+      "name": "Split Out Aset",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://query1.finance.yahoo.com/v8/finance/chart/{{ $json.symbol }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "range",
+              "value": "={{ $('Watchlist').first().json.range }}"
+            },
+            {
+              "name": "interval",
+              "value": "1d"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          }
+        }
+      },
+      "id": "73bcfd6a-acd0-42cd-9828-5d6d9f2de91d",
+      "name": "Ambil Harga Historis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung SMA 50, SMA 200, RSI 14 lalu deteksi sinyal untuk setiap aset\nfunction sma(arr, p) {\n  if (arr.length < p) return null;\n  const s = arr.slice(-p);\n  return s.reduce((a, b) => a + b, 0) / p;\n}\n\n// RSI metode Wilder (smoothing)\nfunction rsi(closes, period = 14) {\n  if (closes.length <= period) return null;\n  let gain = 0, loss = 0;\n  for (let i = 1; i <= period; i++) {\n    const d = closes[i] - closes[i - 1];\n    if (d >= 0) gain += d; else loss -= d;\n  }\n  let avgG = gain / period;\n  let avgL = loss / period;\n  for (let i = period + 1; i < closes.length; i++) {\n    const d = closes[i] - closes[i - 1];\n    avgG = (avgG * (period - 1) + (d > 0 ? d : 0)) / period;\n    avgL = (avgL * (period - 1) + (d < 0 ? -d : 0)) / period;\n  }\n  if (avgL === 0) return 100;\n  return 100 - 100 / (1 + avgG / avgL);\n}\n\nconst r2 = (n) => (n === null ? null : Math.round(n * 100) / 100);\nconst out = [];\n\nfor (const item of $input.all()) {\n  const result = item.json?.chart?.result?.[0];\n  if (!result) {\n    out.push({ json: { symbol: 'UNKNOWN', error: 'Data tidak ditemukan', hasSignal: false, signalText: 'Data tidak tersedia' } });\n    continue;\n  }\n\n  const symbol = result.meta.symbol;\n  const currency = result.meta.currency || '';\n  const closes = (result.indicators.quote[0].close || []).filter((c) => c !== null && c !== undefined);\n\n  const lastPrice = closes[closes.length - 1];\n  const sma50 = sma(closes, 50);\n  const sma200 = sma(closes, 200);\n  const rsi14 = rsi(closes, 14);\n\n  // Logika pendeteksi sinyal\n  const signals = [];\n  if (sma50 !== null && sma200 !== null && sma50 > sma200) signals.push('Golden Cross (MA50 > MA200) - Buy Signal');\n  if (rsi14 !== null && rsi14 < 30) signals.push('RSI Oversold (RSI < 30) - Potensi Buy');\n\n  out.push({\n    json: {\n      symbol,\n      currency,\n      dataPoints: closes.length,\n      lastPrice: r2(lastPrice),\n      sma50: r2(sma50),\n      sma200: r2(sma200),\n      rsi14: r2(rsi14),\n      signals,\n      signalText: signals.length ? signals.join(' + ') : 'Tidak ada sinyal (Market Netral)',\n      hasSignal: signals.length > 0,\n    },\n  });\n}\n\nreturn out;"
+      },
+      "id": "efe7dfc1-d803-40b1-808e-b860c65466b5",
+      "name": "Hitung Indikator & Sinyal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.hasSignal }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "53f940bc-914f-4686-8494-cfb1de383c25",
+      "name": "Ada Sinyal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "=🚨 ALERT SINYAL TEKNIKAL\n\nSimbol: {{ $json.symbol }}\nHarga terakhir: {{ $json.currency }} {{ $json.lastPrice }}\nSinyal: {{ $json.signalText }}\n\nSMA50: {{ $json.sma50 }}\nSMA200: {{ $json.sma200 ?? 'n/a (data < 200 hari)' }}\nRSI(14): {{ $json.rsi14 }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "2a383a57-bd34-4351-8a58-31076d01b557",
+      "name": "Telegram Alert Sinyal",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        0
+      ],
+      "webhookId": "f5c57ac2-915e-4ba7-8f14-ebe4d2ab1c90",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "=ℹ️ Update Pemantauan\n\nSimbol: {{ $json.symbol }}\nHarga terakhir: {{ $json.currency }} {{ $json.lastPrice }}\nSinyal: {{ $json.signalText }}\n\nSMA50: {{ $json.sma50 }}\nSMA200: {{ $json.sma200 ?? 'n/a (data < 200 hari)' }}\nRSI(14): {{ $json.rsi14 }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a249272f-fb6e-4974-b0e8-0ebc2957fb48",
+      "name": "Telegram Tanpa Sinyal",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        208
+      ],
+      "webhookId": "199deb1d-393b-40e4-a4fb-c0f83fe8791e",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Watchlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Watchlist": {
+      "main": [
+        [
+          {
+            "node": "Split Out Aset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Aset": {
+      "main": [
+        [
+          {
+            "node": "Ambil Harga Historis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Harga Historis": {
+      "main": [
+        [
+          {
+            "node": "Hitung Indikator & Sinyal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hitung Indikator & Sinyal": {
+      "main": [
+        [
+          {
+            "node": "Ada Sinyal?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ada Sinyal?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Alert Sinyal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Tanpa Sinyal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1027d0b1-ebcf-415b-aba9-fe066f25c68d",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "DgmY18H1c2xJeSac",
+  "tags": []
+}
