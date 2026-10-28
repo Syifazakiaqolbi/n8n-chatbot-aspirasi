@@ -1,0 +1,510 @@
+{
+  "name": "Tugas 8 - Analisis Sentimen Crypto X (Data Uji)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ALUR 1 - Pengumpulan & Klasifikasi Sentimen (tiap 15 menit)\nSchedule Trigger -> X (Twitter) cari tweet -> AI klasifikasi (Positive/Negative/Neutral) -> Format data -> Google Sheets (Append Row)",
+        "height": 420,
+        "width": 1700,
+        "color": 7
+      },
+      "id": "ed170239-00eb-40c8-95d8-3c42da274597",
+      "name": "Catatan Alur 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ALUR 2 - Kesimpulan Pasar Harian (07:00 WIB)\nSchedule Trigger -> Baca Google Sheets -> Hitung persentase (Code) -> AI narasi kesimpulan -> Telegram",
+        "height": 420,
+        "width": 1700,
+        "color": 4
+      },
+      "id": "eb0edd58-ddfc-4dfc-beb8-80ca87c1a8d3",
+      "name": "Catatan Alur 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        208,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "27a64e70-d020-4e38-9d3e-652babeadde5",
+      "name": "Jadwal 15 Menit",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// DATA UJI: meniru output node X (Twitter) karena kredit API X habis\nconst samples = [\n  '$BTC just broke resistance, this rally looks super strong! Bullish all the way.',\n  '$ETH gas fees are insane again, this market is a disaster. Selling everything.',\n  'Watching $BTC and $ETH today. Volume is average, no clear direction yet.',\n  '$ETH staking yields keep growing, great news for long term holders!',\n  'Another exchange hack... $BTC dumping hard, so much fear in the market.',\n  '$BTC dominance steady at 52% today. Waiting for the Fed announcement.',\n  'Institutional inflows into $ETH ETFs are huge this week. Very optimistic.',\n  'I lost half my portfolio on $ETH. Terrible week, never investing again.',\n  '$BTC trading sideways between 60k and 62k. Nothing new.',\n  'Love seeing $BTC adoption growing in emerging markets. Amazing progress!'\n];\nconst now = Date.now();\n   return samples.slice(0, 3).map((text, i) => ({\n  json: {\n    id: String(now + i),\n    text,\n    created_at: new Date(now - i * 60000).toISOString()\n  }\n}));"
+      },
+      "id": "5f33cb17-8dbc-4b1c-9e58-0579c55a3f59",
+      "name": "Cari Tweet X (Data Uji)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Klasifikasikan sentimen tweet berikut:\n\n{{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a crypto market sentiment classifier. Classify the sentiment of the given tweet toward the crypto market or asset as exactly one of: Positive, Negative, Neutral. Answer with ONLY one word: 'Positive', 'Negative', or 'Neutral'. No explanation, no punctuation, no emoji, no extra text."
+            }
+          ]
+        }
+      },
+      "id": "474a9e63-d93f-425a-bd7e-339c9c188313",
+      "name": "AI Klasifikasi Sentimen",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        768,
+        -64
+      ],
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "1ce94f85-d2a6-4922-a773-38f4abaff615",
+      "name": "Gemini (Klasifikasi)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        800,
+        144
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "tweet_id",
+              "value": "={{ $('Cari Tweet X (Data Uji)').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "tweet_text",
+              "value": "={{ $('Cari Tweet X (Data Uji)').item.json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "tweet_created_at",
+              "value": "={{ $('Cari Tweet X (Data Uji)').item.json.created_at ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "sentiment",
+              "value": "={{ ['Positive','Negative','Neutral'].find(s => String($json.text).trim().toLowerCase().includes(s.toLowerCase())) ?? 'Neutral' }}",
+              "type": "string"
+            },
+            {
+              "id": "f5",
+              "name": "saved_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6485f409-ee54-4354-9d26-61958972f911",
+      "name": "Format Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1056,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1J_XGKUyHZq7wy5G2wJawtk9Eo_LjtAnDZhHYh63tj7g",
+          "mode": "list",
+          "cachedResultName": "Sentimen_Crypto_Database",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1J_XGKUyHZq7wy5G2wJawtk9Eo_LjtAnDZhHYh63tj7g/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sentimen_Crypto",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tweet_id": "={{ $json.tweet_id }}",
+            "tweet_text": "={{ $json.tweet_text }}",
+            "tweet_created_at": "={{ $json.tweet_created_at }}",
+            "sentiment": "={{ $json.sentiment }}",
+            "saved_at": "={{ $json.saved_at }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tweet_id",
+              "displayName": "tweet_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tweet_text",
+              "displayName": "tweet_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tweet_created_at",
+              "displayName": "tweet_created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "saved_at",
+              "displayName": "saved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "632e55d5-c7b9-4e7b-8a2e-1edeadc202aa",
+      "name": "Simpan ke Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1296,
+        -64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "f622a53d-8603-4443-bb39-d534ebf5c41e",
+      "name": "Jadwal Harian 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1J_XGKUyHZq7wy5G2wJawtk9Eo_LjtAnDZhHYh63tj7g",
+          "mode": "list",
+          "cachedResultName": "Sentimen_Crypto_Database",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1J_XGKUyHZq7wy5G2wJawtk9Eo_LjtAnDZhHYh63tj7g/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sentimen_Crypto",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1J_XGKUyHZq7wy5G2wJawtk9Eo_LjtAnDZhHYh63tj7g/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "144f45c5-84ab-478d-b004-23e39488ea38",
+      "name": "Baca Database Sentimen",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        464
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung statistik sentimen (24 jam terakhir; jika kosong pakai semua data)\nconst rows = $input.all().map(i => i.json).filter(r => r.sentiment);\nconst cutoff = Date.now() - 24 * 60 * 60 * 1000;\nconst recent = rows.filter(r => {\n  const t = new Date(r.saved_at).getTime();\n  return !isNaN(t) && t >= cutoff;\n});\nconst data = recent.length ? recent : rows;\n\nlet positive = 0, negative = 0, neutral = 0;\nfor (const r of data) {\n  const s = String(r.sentiment).trim().toLowerCase();\n  if (s.startsWith('pos')) positive++;\n  else if (s.startsWith('neg')) negative++;\n  else neutral++;\n}\n\nconst total = positive + negative + neutral;\nconst pct = n => total ? Math.round((n / total) * 1000) / 10 : 0;\n\nconst counts = { Positive: positive, Negative: negative, Neutral: neutral };\nconst max = Math.max(positive, negative, neutral);\nconst leaders = Object.keys(counts).filter(k => counts[k] === max);\nconst dominant = !total\n  ? 'Tidak ada data'\n  : leaders.length > 1\n    ? 'Seimbang (' + leaders.join(' = ') + ')'\n    : leaders[0];\n\nreturn [{\n  json: {\n    periode: recent.length ? '24 jam terakhir' : 'seluruh data historis',\n    total,\n    positive, negative, neutral,\n    pct_positive: pct(positive),\n    pct_negative: pct(negative),\n    pct_neutral: pct(neutral),\n    dominant,\n    dominant_pct: total ? pct(max) : 0\n  }\n}];"
+      },
+      "id": "ca98d157-da42-4e41-9008-6337a2e622d0",
+      "name": "Analisis Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Berikut statistik sentimen tweet $BTC dan $ETH pada periode {{ $json.periode }}:\n\n- Total tweet dianalisis: {{ $json.total }}\n- Positive: {{ $json.positive }} tweet ({{ $json.pct_positive }}%)\n- Negative: {{ $json.negative }} tweet ({{ $json.pct_negative }}%)\n- Neutral: {{ $json.neutral }} tweet ({{ $json.pct_neutral }}%)\n- Sentimen dominan: {{ $json.dominant }} ({{ $json.dominant_pct }}%)\n\nBuatkan narasi kesimpulan pasar harian berdasarkan data di atas.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah analis pasar crypto. Tulis kesimpulan pasar harian dalam bahasa Indonesia yang ringkas (maksimal 120 kata), berdasarkan HANYA data statistik sentimen yang diberikan. Struktur: (1) kalimat pembuka yang menyebut sentimen dominan beserta persentasenya, (2) interpretasi singkat suasana pasar, (3) satu kalimat penutup yang netral. Jangan memberi rekomendasi beli/jual dan jangan mengarang angka di luar data. Ini bukan nasihat keuangan."
+            }
+          ]
+        }
+      },
+      "id": "5e35b57e-b8bf-4b60-87a3-30f01364b30e",
+      "name": "AI Narasi Kesimpulan",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1008,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "a9de9506-2a30-482c-a7a8-47e09491b2ee",
+      "name": "Gemini (Kesimpulan)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        656
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "=📊 *Kesimpulan Pasar Crypto Harian*\n_{{ $now.setZone('Asia/Jakarta').toFormat('dd LLL yyyy, HH:mm') }} WIB_\n\nPositive: {{ $('Analisis Data').item.json.pct_positive }}% | Negative: {{ $('Analisis Data').item.json.pct_negative }}% | Neutral: {{ $('Analisis Data').item.json.pct_neutral }}%\nTotal tweet: {{ $('Analisis Data').item.json.total }}\n\n{{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "1244d125-3ce0-49aa-8fe2-2792e9eee685",
+      "name": "Kirim ke Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        464
+      ],
+      "webhookId": "8ea1b9cf-ddef-4f04-9ac9-47d2814edb78",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Jadwal 15 Menit": {
+      "main": [
+        [
+          {
+            "node": "Cari Tweet X (Data Uji)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Klasifikasi Sentimen": {
+      "main": [
+        [
+          {
+            "node": "Format Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini (Klasifikasi)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Klasifikasi Sentimen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Data": {
+      "main": [
+        [
+          {
+            "node": "Simpan ke Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jadwal Harian 07:00": {
+      "main": [
+        [
+          {
+            "node": "Baca Database Sentimen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Database Sentimen": {
+      "main": [
+        [
+          {
+            "node": "Analisis Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisis Data": {
+      "main": [
+        [
+          {
+            "node": "AI Narasi Kesimpulan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini (Kesimpulan)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Narasi Kesimpulan",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Narasi Kesimpulan": {
+      "main": [
+        [
+          {
+            "node": "Kirim ke Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cari Tweet X (Data Uji)": {
+      "main": [
+        [
+          {
+            "node": "AI Klasifikasi Sentimen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "dff110f7-ef40-4c50-bcf9-4e78ddff110b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "2MARQ8v43LUU07Ai",
+  "tags": []
+}
