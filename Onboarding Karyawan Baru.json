@@ -1,0 +1,348 @@
+{
+  "name": "Onboarding Karyawan Baru",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0",
+          "mode": "list",
+          "cachedResultName": "data-onboarding-karyawan",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Onboarding Karyawan Baru",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0/edit#gid=0"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "5db3d9bf-ff4d-4f8e-b756-3c3e93723c38",
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "9XzpFdOI0siEtxNh",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1000001-0000-4000-8000-000000000001",
+              "name": "first_name",
+              "value": "={{ ($json['First Name'] || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f1000001-0000-4000-8000-000000000002",
+              "name": "last_name",
+              "value": "={{ ($json['Last Name'] || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f1000001-0000-4000-8000-000000000003",
+              "name": "full_name",
+              "value": "={{ (($json['First Name'] || '') + ' ' + ($json['Last Name'] || '')).trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "f1000001-0000-4000-8000-000000000004",
+              "name": "email",
+              "value": "={{ ($json['Email'] || '').toString().trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "f1000001-0000-4000-8000-000000000005",
+              "name": "position",
+              "value": "={{ ($json['Position'] || $json['Posisi'] || '').toString().trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8202040a-fff0-4c55-ba02-5dd73c5feff9",
+      "name": "Normalisasi Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "listId": "6ae2bf240be1648a16cd2d21",
+        "name": "={{ $json.full_name }}",
+        "additionalFields": {}
+      },
+      "id": "19105f19-18a1-4e27-b85d-7b2de40cb131",
+      "name": "Membuat Kartu",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "credentials": {
+        "trelloApi": {
+          "id": "NmC9bo4XKspM6XLU",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "checklist",
+        "operation": "create",
+        "cardId": "={{ $json.id }}",
+        "name": "Checklist Onboarding",
+        "additionalFields": {}
+      },
+      "id": "4e1d11e0-1cc2-4621-b55c-07639fcd3e02",
+      "name": "Membuat Checklist",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "credentials": {
+        "trelloApi": {
+          "id": "NmC9bo4XKspM6XLU",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0",
+          "mode": "list",
+          "cachedResultName": "data-onboarding-karyawan",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1623289302,
+          "mode": "list",
+          "cachedResultName": "Checklist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Su2U1J29goFPthysHIG7cBhD4BbXelWsaS-oVGPxUL0/edit#gid=1623289302"
+        },
+        "options": {}
+      },
+      "id": "56b3554e-c3ec-424a-90aa-362377ade8f4",
+      "name": "Baca Sheet Checklist",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ubah tiap baris sheet \"Checklist\" menjadi 1 item tugas + ID checklist Trello\nconst checklistId = $('Membuat Checklist').first().json.id;\n\nreturn $input.all()\n  .map(item => {\n    const j = item.json;\n    const tugas = j.Tugas || j.tugas || j.Task || j['Daftar Tugas'] || Object.values(j)[0] || '';\n    return { json: { checklistId, tugas: String(tugas).trim() } };\n  })\n  .filter(item => item.json.tugas !== '');"
+      },
+      "id": "b61cf0f5-ab58-4542-803f-445af251a71f",
+      "name": "Siapkan Item Checklist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "checklist",
+        "operation": "createCheckItem",
+        "checklistId": "={{ $json.checklistId }}",
+        "name": "={{ $json.tugas }}",
+        "additionalFields": {}
+      },
+      "id": "c0f1d99e-4589-4a2b-881d-eb6077628633",
+      "name": "Menambah Item Checklist",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        0
+      ],
+      "credentials": {
+        "trelloApi": {
+          "id": "NmC9bo4XKspM6XLU",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gabungkan data diri karyawan + daftar tugas menjadi 1 objek JSON\nconst dataDiri = $('Normalisasi Data').first().json;\nconst tugas = $('Siapkan Item Checklist').all().map(i => i.json.tugas);\n\nconst daftarHtml = '<ul>' + tugas.map(t => `<li>${t}</li>`).join('') + '</ul>';\n\nreturn [{\n  json: {\n    nama: dataDiri.full_name,\n    first_name: dataDiri.first_name,\n    email: dataDiri.email,\n    posisi: dataDiri.position,\n    tugas,\n    daftar_tugas_html: daftarHtml\n  }\n}];"
+      },
+      "id": "cbceee53-15b3-4ef0-98ce-4ebcf7dcc3ab",
+      "name": "Gabung jadi 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Selamat Datang di Perusahaan, {{ $json.first_name }}!",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;\">\n  <h2 style=\"color: #1a73e8;\">Selamat Datang, {{ $json.nama }}! 🎉</h2>\n  <p>Halo <b>{{ $json.first_name }}</b>,</p>\n  <p>Kami sangat senang menyambut Anda sebagai <b>{{ $json.posisi }}</b> di tim kami.</p>\n  <p>Berikut daftar tugas onboarding yang akan Anda jalani:</p>\n  {{ $json.daftar_tugas_html }}\n  <p>Seluruh tugas ini sudah kami catat di papan Trello Anda. Jika ada pertanyaan, silakan balas email ini.</p>\n  <p>Salam hangat,<br><b>Tim HR</b></p>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a90348f4-0035-40ee-aeab-58330cf89ccc",
+      "name": "Kirim Email Sambutan",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        0
+      ],
+      "webhookId": "704b2e2c-c4a9-41a1-a958-daacca37453b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "con9VOlStKJpnwKn",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalisasi Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisasi Data": {
+      "main": [
+        [
+          {
+            "node": "Membuat Kartu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Membuat Kartu": {
+      "main": [
+        [
+          {
+            "node": "Membuat Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Membuat Checklist": {
+      "main": [
+        [
+          {
+            "node": "Baca Sheet Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Sheet Checklist": {
+      "main": [
+        [
+          {
+            "node": "Siapkan Item Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siapkan Item Checklist": {
+      "main": [
+        [
+          {
+            "node": "Menambah Item Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menambah Item Checklist": {
+      "main": [
+        [
+          {
+            "node": "Gabung jadi 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gabung jadi 1": {
+      "main": [
+        [
+          {
+            "node": "Kirim Email Sambutan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "56522d2c-a312-4bb2-9075-4f43f5888fcb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "dZsHUh8Wz6bcWsSP",
+  "tags": []
+}
