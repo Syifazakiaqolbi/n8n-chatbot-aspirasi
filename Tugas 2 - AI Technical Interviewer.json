@@ -1,0 +1,294 @@
+{
+  "name": "Tugas 2 - AI Technical Interviewer",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4ea38333-c09f-4097-990f-9daad9d6c507",
+      "name": "Mulai Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simulasi data kandidat (dummy)\nconst candidates = [\n  {\n    candidate_name: \"Budi\",\n    position: \"Backend Engineer\",\n    claimed_skills: [\"Node.js\", \"PostgreSQL\", \"Docker\", \"REST API\"],\n    past_company_type: \"Startup\"\n  },\n  {\n    candidate_name: \"Siti\",\n    position: \"DevOps Engineer\",\n    claimed_skills: [\"Kubernetes\", \"CI/CD\", \"Linux\", \"AWS\"],\n    past_company_type: \"Enterprise\"\n  }\n];\n\nreturn candidates.map(c => ({ json: c }));"
+      },
+      "id": "818b133a-0fb3-463b-a0ab-62954a27fe66",
+      "name": "Simulasi Data Kandidat",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prompt Builder: menyusun instruksi dinamis dari profil & skill kandidat\nreturn $input.all().map(item => {\n  const c = item.json;\n  const user_prompt =\n`Profil kandidat:\n- Nama: ${c.candidate_name}\n- Posisi dilamar: ${c.position}\n- Skill yang diklaim: ${c.claimed_skills.join(\", \")}\n- Tipe perusahaan sebelumnya: ${c.past_company_type}\n\nBuatkan SATU pertanyaan studi kasus teknis (troubleshooting) yang relevan dengan skill dan posisi di atas.`;\n\n  return { json: { ...c, user_prompt } };\n});"
+      },
+      "id": "40271586-eb76-4654-8fd9-9da6a8d80594",
+      "name": "Prompt Builder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah seorang Senior Technical Interviewer dengan pengalaman lebih dari 10 tahun di industri software. Tugasmu: berdasarkan profil kandidat (posisi, skill yang diklaim, dan tipe perusahaan sebelumnya), buat SATU pertanyaan studi kasus teknis berupa skenario troubleshooting realistis yang menguji kedalaman pemahaman pada skill yang diklaim. Aturan: (1) Hanya satu pertanyaan, (2) Gunakan skenario konkret dengan gejala masalah yang jelas, (3) Sesuaikan tingkat kesulitan dengan posisi, (4) Gunakan Bahasa Indonesia, (5) Keluarkan HANYA teks pertanyaan tanpa pembuka, penjelasan, atau kunci jawaban."
+            }
+          ]
+        }
+      },
+      "id": "576e3fc1-2a12-4879-acd3-d5cd0efb57e4",
+      "name": "Generate Pertanyaan Studi Kasus",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1712,
+        -208
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "885833ef-12db-4f45-adaf-a1df0af2a723",
+      "name": "Gemini - Interviewer",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1728,
+        16
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock Jawaban: simulasi dua kualitas jawaban (bagus vs buruk) untuk pengujian\nconst questions = $input.all();\nconst profiles = $('Prompt Builder').all();\n\nreturn questions.map((q, i) => {\n  const profile = profiles[i].json;\n  let candidate_answer;\n\n  if (profile.candidate_name === \"Budi\") {\n    // Jawaban berkualitas: langkah teknis mendalam\n    candidate_answer =\n      \"Pertama saya cek log aplikasi dan metrik (CPU, memori, koneksi DB) untuk menemukan pola error. \" +\n      \"Lalu saya lakukan root cause analysis: reproduksi masalah di staging, periksa slow query dengan EXPLAIN ANALYZE, \" +\n      \"dan cek connection pool yang habis. Setelah akar masalah ketemu, saya perbaiki dengan menambah index dan mengatur ulang pool, \" +\n      \"lalu menambahkan alert monitoring serta menulis postmortem agar tidak terulang.\";\n  } else {\n    // Jawaban lemah: dangkal dan umum\n    candidate_answer = \"Saya akan restart servernya dulu, kalau masih error saya coba lagi nanti.\";\n  }\n\n  return {\n    json: {\n      candidate_name: profile.candidate_name,\n      position: profile.position,\n      claimed_skills: profile.claimed_skills,\n      question: q.json.text,\n      candidate_answer\n    }\n  };\n});"
+      },
+      "id": "69541e98-ff18-4afe-9cdd-441419b47fcd",
+      "name": "Mock Jawaban",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Pertanyaan studi kasus:\n{{ $json.question }}\n\nSkill yang diklaim kandidat: {{ $json.claimed_skills.join(', ') }}\n\nJawaban kandidat:\n{{ $json.candidate_answer }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah Senior Technical Interviewer yang menilai jawaban kandidat secara objektif dan konsisten. Nilai jawaban terhadap pertanyaan studi kasus dengan skor 0-100. Skor tinggi diberikan untuk jawaban yang menyertakan langkah teknis mendalam (pengecekan log, root cause analysis, solusi spesifik, pencegahan). Skor rendah untuk jawaban dangkal, umum, atau hanya menyarankan restart tanpa analisis. Tentukan apakah jawaban menunjukkan kedalaman teknis ('mendalam') atau hanya umum ('umum'). Keluarkan HANYA JSON valid tanpa markdown dengan format persis: {\"score\": <angka 0-100>, \"depth\": \"mendalam\" atau \"umum\", \"analysis\": \"<analisis singkat maksimal 3 kalimat>\"}"
+            }
+          ]
+        }
+      },
+      "id": "5f7ec9ca-5403-49e2-ac9e-af0679faccb0",
+      "name": "Evaluasi Jawaban",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        2272,
+        -208
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "885800d5-1c63-419d-903d-b5b09f6384c5",
+      "name": "Gemini - Evaluator",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        16
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse output JSON AI + susun pesan Telegram\n// Bersihkan karakter Markdown agar Telegram tidak error \"can't parse entities\"\nconst clean_txt = (t) => String(t ?? \"\").replace(/[`*\\[\\]]/g, \"\").replace(/_/g, \" \");\n\nreturn $input.all().map((item, i) => {\n  const data = $('Mock Jawaban').all()[i].json;\n  const raw = item.json.text || \"\";\n  const clean = raw.replace(/```json|```/g, \"\").trim();\n\n  let ev;\n  try {\n    ev = JSON.parse(clean);\n  } catch (e) {\n    ev = { score: 0, depth: \"umum\", analysis: \"Gagal parsing output AI: \" + raw };\n  }\n\n  const score = Number(ev.score) || 0;\n  let decision;\n  if (score >= 75) decision = \"LULUS - Lanjut ke wawancara tahap berikutnya\";\n  else if (score >= 50) decision = \"DIPERTIMBANGKAN - Perlu evaluasi tambahan\";\n  else decision = \"TIDAK LULUS\";\n\n  const message =\n`HASIL SCREENING KANDIDAT\n\nNama: ${data.candidate_name}\nPosisi: ${data.position}\nSkill: ${data.claimed_skills.join(\", \")}\n\nPERTANYAAN STUDI KASUS:\n${clean_txt(data.question)}\n\nJAWABAN KANDIDAT:\n${clean_txt(data.candidate_answer)}\n\nHASIL EVALUASI:\nSkor: ${score}/100\nKedalaman: ${ev.depth}\nAnalisis: ${clean_txt(ev.analysis)}\n\nKEPUTUSAN: ${decision}`;\n\n  return { json: { candidate_name: data.candidate_name, score, depth: ev.depth, analysis: ev.analysis, decision, message } };\n});"
+      },
+      "id": "4690b1f7-d8c1-4ecf-ab94-a3aae1c46d78",
+      "name": "Parse Hasil & Susun Pesan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "341ff2a9-a28d-4fa4-85b9-2605755c7721",
+      "name": "Kirim Hasil ke Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2832,
+        -208
+      ],
+      "webhookId": "57a6b620-0367-4cb8-b324-e4fd15fe3847",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Mulai Workflow": {
+      "main": [
+        [
+          {
+            "node": "Simulasi Data Kandidat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulasi Data Kandidat": {
+      "main": [
+        [
+          {
+            "node": "Prompt Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Builder": {
+      "main": [
+        [
+          {
+            "node": "Generate Pertanyaan Studi Kasus",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Pertanyaan Studi Kasus": {
+      "main": [
+        [
+          {
+            "node": "Mock Jawaban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Interviewer": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Pertanyaan Studi Kasus",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Jawaban": {
+      "main": [
+        [
+          {
+            "node": "Evaluasi Jawaban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Evaluator": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Evaluasi Jawaban",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluasi Jawaban": {
+      "main": [
+        [
+          {
+            "node": "Parse Hasil & Susun Pesan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Hasil & Susun Pesan": {
+      "main": [
+        [
+          {
+            "node": "Kirim Hasil ke Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "121f2ac3-db3b-42cc-b4e9-e61228d99f5b",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "Fy4DkhjAnA1CMwse",
+  "tags": []
+}
