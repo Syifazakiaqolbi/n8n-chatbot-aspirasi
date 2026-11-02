@@ -13,13 +13,13 @@
         "triggerOn": "specificFolder",
         "folderToWatch": {
           "__rl": true,
-          "value": "GANTI_DENGAN_ID_FOLDER_UPLOAD_CV",
+          "value": "17HfCyHhPIHndKn6APGYjf2LWsPMHkTnv",
           "mode": "id"
         },
         "event": "fileCreated",
         "options": {}
       },
-      "id": "n1",
+      "id": "2da75966-e378-4e1b-bda3-3194ec3b4c6d",
       "name": "Google Drive Trigger",
       "type": "n8n-nodes-base.googleDriveTrigger",
       "typeVersion": 1,
@@ -29,7 +29,7 @@
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE",
+          "id": "hXW38Uyh8ivXEgRa",
           "name": "Google Drive account"
         }
       }
@@ -44,17 +44,17 @@
         },
         "options": {}
       },
-      "id": "n2",
+      "id": "faabaf59-a319-46e6-b756-31f8a9583e2d",
       "name": "Download CV",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        220,
+        224,
         0
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
-          "id": "REPLACE",
+          "id": "hXW38Uyh8ivXEgRa",
           "name": "Google Drive account"
         }
       }
@@ -63,12 +63,12 @@
       "parameters": {
         "jsCode": "// Ubah file PDF (binary) dari Google Drive menjadi base64 untuk di-upload ke PDF.co\nconst items = $input.all();\nconst out = [];\nfor (let i = 0; i < items.length; i++) {\n  const buffer = await this.helpers.getBinaryDataBuffer(i, 'data');\n  const fileName = items[i].binary?.data?.fileName || 'cv.pdf';\n  out.push({ json: { fileName, fileBase64: buffer.toString('base64') } });\n}\nreturn out;"
       },
-      "id": "n3",
+      "id": "bcc01375-4863-442e-89f9-b2185c0181d0",
       "name": "Convert PDF to Base64",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
+        448,
         0
       ]
     },
@@ -81,7 +81,7 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "GANTI_DENGAN_API_KEY_PDFCO"
+              "value": "syifazakia10@gmail.com_ta3jfiS9KB9C636VmhKwJ0VoQJQeQ2UbwSwBKPCf1LHFHaBTb4EkDnrWiSYMDxON"
             }
           ]
         },
@@ -90,12 +90,12 @@
         "jsonBody": "={{ JSON.stringify({ name: $json.fileName, file: $json.fileBase64 }) }}",
         "options": {}
       },
-      "id": "n4",
+      "id": "53cbc796-03d5-498a-aa07-78dc1e3ec5a5",
       "name": "PDF.co Upload",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
+        672,
         0
       ]
     },
@@ -108,7 +108,7 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "GANTI_DENGAN_API_KEY_PDFCO"
+              "value": "syifazakia10@gmail.com_ta3jfiS9KB9C636VmhKwJ0VoQJQeQ2UbwSwBKPCf1LHFHaBTb4EkDnrWiSYMDxON"
             }
           ]
         },
@@ -117,7 +117,7 @@
         "jsonBody": "={{ JSON.stringify({ url: $json.url, inline: true, simple: true, name: 'cv.html' }) }}",
         "options": {}
       },
-      "id": "n5",
+      "id": "5aadb6f6-bd6a-450a-95e8-12d7733832ae",
       "name": "PDF.co PDF to HTML",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -130,24 +130,22 @@
       "parameters": {
         "jsCode": "// Clean HTML: bersihkan hasil konversi PDF.co (HTML) menjadi teks mentah yang rapi\nconst item = $input.first().json;\nlet html = item.body || item.html || '';\nconst fileName = $('Convert PDF to Base64').first().json.fileName;\n\nlet text = String(html)\n  .replace(/<!--[\\s\\S]*?-->/g, ' ')                 // komentar HTML\n  .replace(/<head[\\s\\S]*?<\\/head>/gi, ' ')          // head + metadata\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')      // script\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')        // style\n  .replace(/<meta[^>]*>/gi, ' ')                    // tag meta\n  .replace(/<link[^>]*>/gi, ' ')                    // tag link\n  .replace(/<\\/(p|div|br|li|h[1-6]|tr)>/gi, '\\n')   // jaga pemisah baris\n  .replace(/<br\\s*\\/?>/gi, '\\n')\n  .replace(/<[^>]+>/g, ' ')                         // sisa tag HTML\n  .replace(/&nbsp;/gi, ' ')\n  .replace(/&amp;/gi, '&')\n  .replace(/&lt;/gi, '<')\n  .replace(/&gt;/gi, '>')\n  .replace(/&quot;/gi, '\"')\n  .replace(/&#39;/gi, \"'\")\n  .replace(/&[a-z0-9#]+;/gi, ' ')                   // entity lain\n  .replace(/[ \\t]+/g, ' ')                          // spasi berlebih\n  .replace(/\\n\\s*\\n+/g, '\\n')                       // baris kosong berlebih\n  .trim();\n\n// Batasi panjang agar prompt AI tetap ringan\nconst cleanText = text.substring(0, 12000);\n\nreturn [{ json: { fileName, cleanText, charCount: cleanText.length } }];"
       },
-      "id": "n6",
+      "id": "9a2b53e4-8c36-4e87-a029-214bfa2ee4a9",
       "name": "Clean HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
+        1104,
         0
       ]
     },
     {
       "parameters": {
-        "resource": "text",
-        "operation": "message",
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-2.5-flash",
+          "value": "models/gemini-3.8-flash",
           "mode": "list",
-          "cachedResultName": "models/gemini-2.5-flash"
+          "cachedResultName": "Gemini 3.8 Flash"
         },
         "messages": {
           "values": [
@@ -156,21 +154,20 @@
             }
           ]
         },
-        "simplify": true,
-        "jsonOutput": false,
         "options": {}
       },
-      "id": "n7",
+      "id": "142ff1ed-843d-46fd-93e9-7314ea86dfca",
       "name": "AI Scoring (Gemini)",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        1320,
+        1248,
         0
       ],
+      "retryOnFail": true,
       "credentials": {
         "googlePalmApi": {
-          "id": "REPLACE",
+          "id": "XjzcZfa6WzCMZLkr",
           "name": "Google Gemini(PaLM) Api account"
         }
       }
@@ -179,24 +176,24 @@
       "parameters": {
         "jsCode": "// Parsing output JSON dari AI (Gemini) menjadi data terstruktur\nconst input = $input.first().json;\nconst fileName = $('Clean HTML').first().json.fileName;\n\n// Ambil teks respon AI (menyesuaikan struktur output node Gemini)\nlet raw = input.content?.parts?.[0]?.text\n  || input.candidates?.[0]?.content?.parts?.[0]?.text\n  || input.text\n  || input.output\n  || '';\n\n// Buang pembungkus markdown ```json jika ada, lalu ambil string JSON { ... }\nraw = String(raw).replace(/```json|```/gi, '').trim();\nconst start = raw.indexOf('{');\nconst end = raw.lastIndexOf('}');\nlet data = {};\nlet parseOk = true;\ntry {\n  data = JSON.parse(raw.substring(start, end + 1));\n} catch (e) {\n  parseOk = false;\n}\n\n// safeArray: gabungkan array jadi string rapi, strip jika kosong\nconst safeArray = (arr) =>\n  Array.isArray(arr) && arr.length > 0 ? arr.join(', ') : '-';\n\nconst nama = data.nama || 'Tidak diketahui';\nconst skill = safeArray(data.keywords);\nconst skor = Number.isFinite(Number(data.skor)) ? Number(data.skor) : 0;\nconst ringkasan = data.ringkasan || '-';\n\nconst pesan =\n`📄 LAPORAN SCREENING CV BARU\n\n👤 Nama   : ${nama}\n🛠 Skill  : ${skill}\n⭐ Skor   : ${skor}/100\n\n📝 Ringkasan: ${ringkasan}\n\n📎 File: ${fileName}${parseOk ? '' : '\\n⚠️ Catatan: output AI tidak valid JSON, cek manual.'}`;\n\nreturn [{ json: { nama, skill, skor, ringkasan, fileName, parseOk, pesan } }];"
       },
-      "id": "n8",
+      "id": "8328e2eb-05f8-478d-ab43-f098dc6e820b",
       "name": "Parse JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1540,
+        1552,
         0
       ]
     },
     {
       "parameters": {
-        "chatId": "GANTI_DENGAN_CHAT_ID_PEREKRUT",
+        "chatId": "6049105471",
         "text": "={{ $json.pesan }}",
         "additionalFields": {
           "appendAttribution": false
         }
       },
-      "id": "n9",
+      "id": "161ad2c7-ff80-482a-a697-675198050fde",
       "name": "Kirim ke Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -204,14 +201,16 @@
         1760,
         0
       ],
+      "webhookId": "4368ca42-31e8-4811-afaa-d3c5899926b1",
       "credentials": {
         "telegramApi": {
-          "id": "REPLACE",
-          "name": "Telegram account"
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
         }
       }
     }
   ],
+  "pinData": {},
   "connections": {
     "Google Drive Trigger": {
       "main": [
@@ -302,10 +301,17 @@
       ]
     }
   },
-  "pinData": {},
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
+  "versionId": "187b869f-cc90-44a2-929f-e7239143c424",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "rzoINtliwgGE1Nhw",
   "tags": []
 }
