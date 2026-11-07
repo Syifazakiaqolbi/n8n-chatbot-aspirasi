@@ -1,0 +1,577 @@
+{
+  "name": "Tugas 5 - Menu Interaktif SOP Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f695b4d7-9225-4906-92ae-33f620c34070",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "tugas5-sop-menu-interaktif",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.message?.text }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "/start"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Pesan Teks /start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.callback_query?.data }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Callback Query (Tombol)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "820353a8-e3a3-4a75-8f98-ef2b37d5f9dd",
+      "name": "Switch Tipe Update",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        272,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n03-a1",
+              "name": "teks_sambutan",
+              "value": "Halo! 👋 Selamat datang di Asisten SOP Perusahaan.\n\nSilakan pilih topik SOP yang ingin kamu ketahui melalui tombol menu di bawah ini. Ketik /start kapan saja untuk menampilkan menu lagi.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4a9ae3e2-3020-40c0-88fa-9f7683b35cd5",
+      "name": "Set Template Sambutan",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.teks_sambutan }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Prosedur Cuti",
+                    "additionalFields": {
+                      "callback_data": "cuti"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "⏰ Aturan Lembur",
+                    "additionalFields": {
+                      "callback_data": "lembur"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🕘 Ketentuan Absensi",
+                    "additionalFields": {
+                      "callback_data": "absensi"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "27969b4f-ac9f-42bc-9b1a-143176a123fc",
+      "name": "Kirim Sambutan + Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        0
+      ],
+      "webhookId": "tugas5-kirim-menu",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram Trigger').item.json.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "id": "2ef8cd5d-4127-4087-9184-4dd9e985219f",
+      "name": "Answer Callback Query",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        384
+      ],
+      "webhookId": "tugas5-answer-query",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "n06-c1",
+              "leftValue": "={{ $('Telegram Trigger').item.json.callback_query.data }}",
+              "rightValue": "cuti",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ad50dc22-7e18-450c-8848-440cd04da90a",
+      "name": "If Cuti",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "n07-c1",
+              "leftValue": "={{ $('Telegram Trigger').item.json.callback_query.data }}",
+              "rightValue": "lembur",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c4b47142-9101-4d14-a4c3-d02867a2f66b",
+      "name": "If Lembur",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        784,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "n08-c1",
+              "leftValue": "={{ $('Telegram Trigger').item.json.callback_query.data }}",
+              "rightValue": "absensi",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ad5da51f-b72d-4fe3-be99-1d4b0163cff8",
+      "name": "If Absensi",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n09-a1",
+              "name": "jawaban_sop",
+              "value": "📋 PROSEDUR CUTI\n\n1. Ajukan cuti minimal 7 hari kerja sebelum tanggal cuti melalui form pengajuan.\n2. Atasan langsung memberikan persetujuan maksimal 2 hari kerja.\n3. HRD memverifikasi sisa kuota cuti (12 hari per tahun).\n4. Serah terima pekerjaan ke rekan tim sebelum cuti dimulai.\n5. Cuti sakit wajib melampirkan surat dokter.\n\nKetik /start untuk kembali ke menu.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e7331e51-c467-4c0c-8755-0ee9f65aa985",
+      "name": "Set SOP Cuti",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n10-a1",
+              "name": "jawaban_sop",
+              "value": "⏰ ATURAN LEMBUR\n\n1. Lembur harus mendapat surat perintah tertulis dari atasan.\n2. Lembur dihitung setelah jam kerja normal (maksimal 3 jam per hari, 14 jam per minggu).\n3. Karyawan wajib mengisi form lembur maksimal H+1.\n4. Kompensasi berupa upah lembur atau cuti pengganti sesuai kebijakan.\n5. Lembur tanpa persetujuan tidak dihitung.\n\nKetik /start untuk kembali ke menu.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b74d664-a5ac-4c46-9a6d-e781522b9b17",
+      "name": "Set SOP Lembur",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n11-a1",
+              "name": "jawaban_sop",
+              "value": "🕘 KETENTUAN ABSENSI\n\n1. Jam kerja 08.00 - 17.00 WIB, Senin sampai Jumat.\n2. Absen masuk dan pulang melalui aplikasi presensi.\n3. Keterlambatan lebih dari 15 menit wajib dilaporkan ke atasan.\n4. Izin tidak masuk dilaporkan maksimal pukul 09.00 hari yang sama.\n\nKetik /start untuk kembali ke menu.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2dc38c0-d704-4b1f-8161-e711e288aad9",
+      "name": "Set SOP Absensi",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n12-a1",
+              "name": "jawaban_sop",
+              "value": "⚠️ Topik SOP tidak dikenali.\n\nKetik /start untuk menampilkan menu SOP yang tersedia.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "09314374-85f4-4fda-b05e-96b261a2e0cc",
+      "name": "Set SOP Tidak Dikenal",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.callback_query.message.chat.id }}",
+        "text": "={{ $json.jawaban_sop }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "419d257d-0402-463c-b881-83be02be12bf",
+      "name": "Kirim Jawaban SOP",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1584,
+        352
+      ],
+      "webhookId": "tugas5-kirim-jawaban",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch Tipe Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Tipe Update": {
+      "main": [
+        [
+          {
+            "node": "Set Template Sambutan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Callback Query",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If Cuti",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Template Sambutan": {
+      "main": [
+        [
+          {
+            "node": "Kirim Sambutan + Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Cuti": {
+      "main": [
+        [
+          {
+            "node": "Set SOP Cuti",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Lembur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Lembur": {
+      "main": [
+        [
+          {
+            "node": "Set SOP Lembur",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Absensi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Absensi": {
+      "main": [
+        [
+          {
+            "node": "Set SOP Absensi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set SOP Tidak Dikenal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SOP Cuti": {
+      "main": [
+        [
+          {
+            "node": "Kirim Jawaban SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SOP Lembur": {
+      "main": [
+        [
+          {
+            "node": "Kirim Jawaban SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SOP Absensi": {
+      "main": [
+        [
+          {
+            "node": "Kirim Jawaban SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set SOP Tidak Dikenal": {
+      "main": [
+        [
+          {
+            "node": "Kirim Jawaban SOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "34118eac-d969-45e5-9753-66149242e5b8",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "idZvINJexbF88mJ6",
+  "tags": []
+}
