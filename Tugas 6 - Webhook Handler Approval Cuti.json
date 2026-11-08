@@ -1,0 +1,571 @@
+{
+  "name": "Tugas 6 - Webhook Handler Approval Cuti",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "approval-cuti",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b6737124-2f0d-4e77-a36e-19c258bd9fbf",
+      "name": "Webhook Approval",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -48
+      ],
+      "webhookId": "9b5e0f90-2021-492a-b71c-dc3ccd25d337"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc",
+          "mode": "list",
+          "cachedResultName": "Database Cuti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log Pengajuan",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID Request",
+              "lookupValue": "={{ $json.query.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "03a44b13-7b32-47b3-ac8d-90d95e11d0d2",
+      "name": "Ambil Log Pengajuan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        848,
+        -48
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validasi parameter keputusan & status log\nconst q = $('Webhook Approval').first().json.query || {};\nconst log = $input.first().json || {};\nconst decision = String(q.status || '').toLowerCase();\n\nlet valid = false;\nlet pesan = '';\nif (!log['ID Request']) pesan = 'ID request tidak ditemukan.';\nelse if (!['approved', 'rejected'].includes(decision)) pesan = 'Parameter status tidak valid.';\nelse if (log['Status'] !== 'Pending') pesan = `Request ini sudah diproses sebelumnya (status: ${log['Status']}).`;\nelse valid = true;\n\nreturn [{ json: { ...log, decision, valid, pesan } }];"
+      },
+      "id": "67a3b156-c6c3-4879-9d95-33f85b92e7fb",
+      "name": "Validasi Keputusan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6a021bfd-5803-4788-9910-14771b8c7147",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4e751129-b82a-467e-bb97-d4041fe2959c",
+      "name": "Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c428c76f-3ef9-4073-9cd0-3fe34b942c03",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "approved",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7eb03f84-3376-491c-8d64-9865722a0a1a",
+      "name": "Disetujui?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc",
+          "mode": "list",
+          "cachedResultName": "Database Cuti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Data Karyawan",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $('Validasi Keputusan').first().json['Email'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9dd93ea6-7070-42a6-ac6e-29833a6695e7",
+      "name": "Lookup Saldo Karyawan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1808,
+        -240
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc",
+          "mode": "list",
+          "cachedResultName": "Database Cuti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Data Karyawan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $json['Email'] }}",
+            "Saldo Cuti": "={{ Number($json['Saldo Cuti']) - Number($('Validasi Keputusan').first().json['Durasi']) }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Saldo Cuti",
+              "displayName": "Saldo Cuti",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2dc37238-acf8-4ceb-a32b-bb2eb94aa2d8",
+      "name": "Update Saldo Cuti",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2048,
+        -240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc",
+          "mode": "list",
+          "cachedResultName": "Database Cuti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log Pengajuan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID Request": "={{ $('Validasi Keputusan').first().json['ID Request'] }}",
+            "Status": "Approved"
+          },
+          "matchingColumns": [
+            "ID Request"
+          ],
+          "schema": [
+            {
+              "id": "ID Request",
+              "displayName": "ID Request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cd2e8042-59da-4cdc-84c3-978ee331fb7d",
+      "name": "Update Log: Approved",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2288,
+        -240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<div style=\"font-family:Arial,sans-serif;max-width:480px;margin:60px auto;text-align:center;border:1px solid #ddd;border-radius:8px;padding:32px\"><h2 style=\"color:#16a34a\">Cuti Disetujui</h2><p>Pengajuan cuti telah disetujui dan saldo cuti karyawan sudah diperbarui.</p></div>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b168847b-e2d1-4007-b88b-8daf32d30da4",
+      "name": "Respon: Disetujui",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2528,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc",
+          "mode": "list",
+          "cachedResultName": "Database Cuti",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P5szX4uGn3pizEtCs8cxhRSt20ixvduRGwn-BSKPzAc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Log Pengajuan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID Request": "={{ $('Validasi Keputusan').first().json['ID Request'] }}",
+            "Status": "Rejected"
+          },
+          "matchingColumns": [
+            "ID Request"
+          ],
+          "schema": [
+            {
+              "id": "ID Request",
+              "displayName": "ID Request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9cd47b24-de69-451d-9e0e-324e933e64db",
+      "name": "Update Log: Rejected",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1808,
+        -48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<div style=\"font-family:Arial,sans-serif;max-width:480px;margin:60px auto;text-align:center;border:1px solid #ddd;border-radius:8px;padding:32px\"><h2 style=\"color:#dc2626\">Cuti Ditolak</h2><p>Pengajuan cuti telah ditolak. Saldo cuti tidak berubah.</p></div>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3f307b36-1513-4fb7-83a9-fd9d0fa1e45b",
+      "name": "Respon: Ditolak",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2048,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<div style=\"font-family:Arial,sans-serif;max-width:480px;margin:60px auto;text-align:center;border:1px solid #ddd;border-radius:8px;padding:32px\"><h2 style=\"color:#d97706\">Tidak Dapat Diproses</h2><p>{{ $json.pesan }}</p></div>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "9a329a48-acf2-4c2f-a722-d12e9a8852ff",
+      "name": "Respon: Tidak Valid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        144
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Approval": {
+      "main": [
+        [
+          {
+            "node": "Ambil Log Pengajuan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Log Pengajuan": {
+      "main": [
+        [
+          {
+            "node": "Validasi Keputusan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validasi Keputusan": {
+      "main": [
+        [
+          {
+            "node": "Request Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Valid?": {
+      "main": [
+        [
+          {
+            "node": "Disetujui?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respon: Tidak Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disetujui?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Saldo Karyawan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Log: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Saldo Karyawan": {
+      "main": [
+        [
+          {
+            "node": "Update Saldo Cuti",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Saldo Cuti": {
+      "main": [
+        [
+          {
+            "node": "Update Log: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Log: Approved": {
+      "main": [
+        [
+          {
+            "node": "Respon: Disetujui",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Log: Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respon: Ditolak",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f63bc444-2cf6-446c-af3c-26804a069c9b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "9yBivc1YEDic9j0y",
+  "tags": []
+}
