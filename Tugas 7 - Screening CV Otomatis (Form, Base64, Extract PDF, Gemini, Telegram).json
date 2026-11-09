@@ -1,0 +1,238 @@
+{
+  "name": "Tugas 7 - Screening CV Otomatis (Form, Base64, Extract PDF, Gemini, Telegram)",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Pengajuan Lamaran Kerja",
+        "formDescription": "Isi data diri dan unggah CV Anda (PDF).",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nama Lengkap",
+              "placeholder": "Nama lengkap Anda",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "placeholder": "nama@email.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Posisi yang Dilamar",
+              "placeholder": "Contoh: Backend Developer",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Upload CV",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "420ea83e-ebb3-44ed-8270-bc27469fd691",
+      "name": "Form Upload CV",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "8806eaf7-8ce8-4cb9-87c9-cbc7cfcc3fda"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Konversi binary PDF -> Base64 + timestamp pengajuan\nconst item = $input.item;\nconst binaryKey = Object.keys(item.binary || {})[0];\nif (!binaryKey) {\n  throw new Error('File CV tidak ditemukan. Pastikan kandidat mengunggah file PDF.');\n}\nconst cvBinary = item.binary[binaryKey];\nconst buffer = await this.helpers.getBinaryDataBuffer($itemIndex, binaryKey);\nconst cvBase64 = buffer.toString('base64');\n\nconst sekarang = new Date();\nconst waktuPengajuan = sekarang.toLocaleString('id-ID', {\n  timeZone: 'Asia/Jakarta',\n  dateStyle: 'full',\n  timeStyle: 'medium'\n}) + ' WIB';\n\nreturn {\n  json: {\n    nama: item.json['Nama Lengkap'],\n    email: item.json['Email'],\n    posisi: item.json['Posisi yang Dilamar'],\n    cv_filename: cvBinary.fileName,\n    cv_mimetype: cvBinary.mimeType,\n    cv_base64: cvBase64,\n    waktu_pengajuan: waktuPengajuan,\n    timestamp_iso: sekarang.toISOString()\n  },\n  // binary disalin ke key \"data\" agar node Extract from File membacanya konsisten\n  binary: { data: cvBinary }\n};"
+      },
+      "id": "26f2f35a-6864-4073-90b2-a9305dcdb644",
+      "name": "Konversi Base64 + Timestamp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "c21a29ef-fa4b-46e7-b6a5-e85643f321b7",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Posisi yang dilamar: {{ $('Konversi Base64 + Timestamp').first().json.posisi }}\nNama kandidat: {{ $('Konversi Base64 + Timestamp').first().json.nama }}\n\nTeks CV:\n{{ $json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah Senior Technical Recruiter dengan pengalaman lebih dari 10 tahun menyaring kandidat di bidang teknologi.\nTugasmu membaca teks CV kandidat dan menilainya secara objektif terhadap posisi yang dilamar.\n\nATURAN OUTPUT:\n- Balas HANYA dengan satu objek JSON valid, tanpa teks pembuka/penutup dan tanpa code fence markdown.\n- Gunakan tepat tiga key berikut:\n{\n  \"ringkasan_profil\": \"string, 2-3 kalimat ringkasan profil kandidat\",\n  \"skill_utama\": [\"array string, maksimal 8 skill teknis utama\"],\n  \"rekomendasi\": \"string, salah satu: Lanjut Interview / Pertimbangkan / Tidak Direkomendasikan, diikuti alasan singkat\"\n}\n- Gunakan Bahasa Indonesia.\n- Jangan mengarang informasi yang tidak ada di CV."
+            }
+          ]
+        }
+      },
+      "id": "4553b06b-cfe7-4e62-a1d5-5ae64376feae",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        0
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.8-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "9a06b2f9-85a1-48b7-9449-e5cc67df69d5",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        752,
+        224
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// JSON Cleaning + Error Handling (try-catch)\nconst raw = $input.first().json.text ?? $input.first().json.output ?? '';\nconst meta = $('Konversi Base64 + Timestamp').first().json;\n\nlet hasil;\nlet status = 'VALID';\n\ntry {\n  // 1. Buang code fence markdown (```json ... ```)\n  let cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();\n\n  // 2. Ambil hanya bagian objek JSON (dari { pertama sampai } terakhir)\n  const awal = cleaned.indexOf('{');\n  const akhir = cleaned.lastIndexOf('}');\n  if (awal === -1 || akhir === -1) {\n    throw new Error('Output AI tidak mengandung objek JSON');\n  }\n  cleaned = cleaned.substring(awal, akhir + 1);\n\n  // 3. Parse\n  hasil = JSON.parse(cleaned);\n\n  // 4. Validasi field wajib\n  if (!hasil.ringkasan_profil || !hasil.skill_utama || !hasil.rekomendasi) {\n    throw new Error('Field ringkasan_profil / skill_utama / rekomendasi tidak lengkap');\n  }\n} catch (err) {\n  status = 'GAGAL_PARSE: ' + err.message;\n  hasil = {\n    ringkasan_profil: 'Output AI tidak valid, perlu review manual oleh HRD.',\n    skill_utama: [],\n    rekomendasi: 'Review manual'\n  };\n}\n\nconst skills = Array.isArray(hasil.skill_utama)\n  ? hasil.skill_utama\n  : String(hasil.skill_utama).split(',').map(s => s.trim()).filter(Boolean);\n\nconst pesan_telegram =\n`📄 PENGAJUAN CV BARU\n━━━━━━━━━━━━━━━━━━\n👤 Nama: ${meta.nama}\n📧 Email: ${meta.email}\n💼 Posisi: ${meta.posisi}\n🕒 Waktu: ${meta.waktu_pengajuan}\n\n📝 Ringkasan Profil:\n${hasil.ringkasan_profil}\n\n🛠 Skill Utama:\n${skills.length ? skills.map(s => '• ' + s).join('\\n') : '-'}\n\n✅ Rekomendasi:\n${hasil.rekomendasi}\n\nStatus parsing: ${status}`;\n\nreturn [{\n  json: {\n    status_parsing: status,\n    nama: meta.nama,\n    email: meta.email,\n    posisi: meta.posisi,\n    waktu_pengajuan: meta.waktu_pengajuan,\n    ringkasan_profil: hasil.ringkasan_profil,\n    skill_utama: skills,\n    rekomendasi: hasil.rekomendasi,\n    pesan_telegram\n  }\n}];"
+      },
+      "id": "6c0da3b5-c66e-49fb-867a-64327eb17eb4",
+      "name": "JSON Cleaning (try-catch)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "6049105471",
+        "text": "={{ $json.pesan_telegram }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "0d7b262c-35d1-497d-b246-83a1c75c1d23",
+      "name": "Kirim Notifikasi Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        0
+      ],
+      "webhookId": "9b8a7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d",
+      "credentials": {
+        "telegramApi": {
+          "id": "OxsRbZgDRYzJGMob",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Form Upload CV": {
+      "main": [
+        [
+          {
+            "node": "Konversi Base64 + Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konversi Base64 + Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "JSON Cleaning (try-catch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Cleaning (try-catch)": {
+      "main": [
+        [
+          {
+            "node": "Kirim Notifikasi Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d9ff02aa-cd86-44da-8a00-4b5bd7eaba10",
+  "meta": {
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "WNNiqIXjKO69EiLP",
+  "tags": []
+}
