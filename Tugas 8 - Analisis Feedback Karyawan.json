@@ -1,0 +1,369 @@
+{
+  "name": "Tugas 8 - Analisis Feedback Karyawan",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1bb3dc94-f1b2-486c-b373-9b33cd3119ef",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        736,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE",
+          "mode": "list",
+          "cachedResultName": "Tugas8 data survei karyawan ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "af5bccef-3558-4e46-8d34-6ac00aeaa33c",
+      "name": "Get Survey Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        912,
+        640
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2e4f6a8-2222-4c3d-8e9f-000000000002",
+              "leftValue": "={{ $json.Sentimen }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "071af8e8-dc56-4579-a634-d22aec71c9c1",
+      "name": "Filter Belum Dianalisis",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a32baaa8-4361-4959-8119-50c041a65435",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1248,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analisis feedback karyawan berikut:\n\nID Karyawan: {{ $json.employee_id }}\nFeedback: \"{{ $json.feedback }}\"\n\nTugasmu:\n1. Sentiment: tentukan emosi dasar feedback, HANYA salah satu dari: Positive, Neutral, Negative.\n2. Category: kelompokkan isi feedback ke SATU topik utama, HANYA salah satu dari: Salary, Facility, Management, Work Environment, Workload, Career Development, Other.\n3. Action Plan: tulis satu rekomendasi tindak lanjut yang spesifik, singkat, dan bisa dilakukan HR (maksimal 2 kalimat, Bahasa Indonesia).",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Kamu adalah HR Analyst berpengalaman. Kamu menganalisis feedback karyawan secara objektif dan hanya menjawab sesuai skema JSON yang diminta, tanpa teks tambahan."
+            }
+          ]
+        }
+      },
+      "id": "499c3bbb-c76b-4b1b-96cb-4d7f971477c5",
+      "name": "Analisis Feedback (Basic LLM Chain)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1520,
+        752
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "c0492d97-6081-466a-828d-15be451a7315",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        976
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XjzcZfa6WzCMZLkr",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"sentiment\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"Positive\",\n        \"Neutral\",\n        \"Negative\"\n      ],\n      \"description\": \"Emosi dasar dari feedback karyawan\"\n    },\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"Salary\",\n        \"Facility\",\n        \"Management\",\n        \"Work Environment\",\n        \"Workload\",\n        \"Career Development\",\n        \"Other\"\n      ],\n      \"description\": \"Topik utama dari feedback\"\n    },\n    \"action_plan\": {\n      \"type\": \"string\",\n      \"description\": \"Rekomendasi tindak lanjut singkat untuk HR\"\n    }\n  },\n  \"required\": [\n    \"sentiment\",\n    \"category\",\n    \"action_plan\"\n  ],\n  \"additionalProperties\": false\n}"
+      },
+      "id": "17359e82-2884-4c8a-bb90-16ffdff40dc7",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE",
+          "mode": "list",
+          "cachedResultName": "Tugas8 data survei karyawan ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XPjL28VLyf7JbnwRmFQwPMCYlBYdaKGrbBRqOLxv7IE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "employee_id": "={{ $('Loop Over Items').item.json.employee_id }}",
+            "Sentimen": "={{ $json.output.sentiment }}",
+            "Kategori": "={{ $json.output.category }}",
+            "Action Plan": "={{ $json.output.action_plan }}"
+          },
+          "matchingColumns": [
+            "employee_id"
+          ],
+          "schema": [
+            {
+              "id": "employee_id",
+              "displayName": "employee_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sentimen",
+              "displayName": "Sentimen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "Kategori",
+              "displayName": "Kategori",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "Action Plan",
+              "displayName": "Action Plan",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "bbdac950-bc7c-4620-95a1-3495ba04e002",
+      "name": "Update Hasil ke Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1872,
+        752
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bSN7kljN2relgi6s",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "8004e28c-4f39-4c1d-8759-29fae64fc797",
+      "name": "Selesai",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        512
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Get Survey Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Survey Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Belum Dianalisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Belum Dianalisis": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Selesai",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analisis Feedback (Basic LLM Chain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisis Feedback (Basic LLM Chain)": {
+      "main": [
+        [
+          {
+            "node": "Update Hasil ke Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analisis Feedback (Basic LLM Chain)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Analisis Feedback (Basic LLM Chain)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Hasil ke Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a63ef195-8e15-4add-ab35-77720c95b3fb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc96f10ae7dc95d3c138575ba243a0a167923dbcb524841d451aadf9135d5fb3"
+  },
+  "nodeGroups": [],
+  "id": "naaIJHdhjzL1B4iv",
+  "tags": []
+}
